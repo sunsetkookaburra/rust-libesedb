@@ -1,0 +1,14 @@
+[package]
+name = "libesedb"
+version = "0.1.0"
+license = "LGPL-3.0-or-later"
+decription = "A safe Rust API for libesedb"
+documentation = "https://docs.rs/libesedb"
+repository = "https://github.com/sunsetkookaburra/rust-libesedb"
+readme = "README.md"
+keywords = ["libesedb", "esent", "edb", "jet-blue", "ese"]
+categories = ["database"]
+edition = "2021"
+
+[dependencies]
+libesedb-sys = { path = "libesedb-sys", version = "0.1.0" }

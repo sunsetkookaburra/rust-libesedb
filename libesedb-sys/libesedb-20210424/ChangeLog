@@ -1,0 +1,168 @@
+TODO
+* add LZXPRESSED compressed string to compression test
+* add leaf value (data definition) cache?
+* use leaf page previous/next values?
+
+* fix XOR checksum in esedb_test_checksum_calculate_little_endian_ecc32 test
+* libfdata next search keep going on a key match?
+
+* fix flaky test for System_Search_AutoSummary (one byte off?)
+* pyesedb
+  - null value support
+  - long value: add data size support
+* refactor libesedb_record_get_value_binary_data_size and
+  libesedb_record_get_value_binary_data
+* complete libfdata btree refactor
+  - libesedb_values_tree.c replace by fdata functions?
+  - fix is_flexible_match for xp_search.edb indexes
+* record flags
+  - add indication of corrupt records
+
+* format notes:
+  - value of un-initialized page checksum: 0xdeadbeefbaadf00d
+    "ESE Super ECCXORChecksum"
+
+* create tool to analyze cache usage, hits and misses
+* move read of data definition into leaf value callback
+  - create separate callback for long values?
+  - this will clean up data definition
+* refactor:
+  - libesedb_multi_value_get_value what about value_type ?
+  - clean up multi value calls to libfvalue
+  - libesedb_long_value_get_segment_data
+* deprecate:
+  - libesedb_record_get_value
+  - libesedb_multi_value_get_value
+* complete libfvalue update integration - multi value
+
+* windows search add support for windows 8 SystemIndex_PropertyStore
+* libesedb check esedbtools_libX header files for _LIBESEDB_LIBX_ defs
+* handle compressed values inside the library
+  - compressed binary data
+* esedbexport -t /root creates /root.export ?
+* esedbexport skip table on error
+* check Win2K ntds.dit support
+* clean up and refactor info handle
+* export handle: fix creation of indexes directory
+
+API:
+* add function to retrieve database signature
+  - can be used to match up EDB/STM pairs
+* add long value functions (string and binary data?)
+* remove
+  - libesedb_record_get_value
+  - libesedb_long_value_get_segment_data
+  - libesedb_multi_value_get_value
+
+* windows search
+  - multi long value segment decryption/compression support
+* export error in more test files: nibble count value exceeds maximum
+
+* code clean up
+  - change page value index and number of values into int
+  - clean up TODO's
+  - refactor info handle
+* combine libesedb_io_handle_read_page with libesedb_page_read
+  - need libesedb_page_read for recovery ?
+
+* page tree on demand
+  - check sanity of page value 0 
+* clean up
+  - libesedb_data_type_definition remove offset
+* handle default value
+  - need database which uses default value
+* parse variable types even when they are not part of the table catalog definition
+* add support for build in table number 1
+* implement cloning of items for improved asynchronous and multi threaded usage
+
+libesedb:
+* add get_table_by_object_identifier function
+* ECC checksum
+  - non 4 byte modulus buffer support
+  - add alignment optimization
+  - error correction
+  - Windows 7 extended checksum ?
+* template table
+  - what about non-tagged data types
+* multi value
+  - what about multi value 0x18
+* database header
+  - compare primary and secondary
+* catalog
+  - compare primary and secondary
+  - limit the size of the catalog ?
+  - support for type 0x0006
+  - support for type 0x0007 (line 3457 in libesedb_page_tree.c)
+* long values
+  - support for non-linear stored long value segments - current solution does a sanity check
+* default values
+   - apply to data definition
+
+Error tolerance
+* probe test for the page size using the backup database header
+* use backup catalog
+
+Debug
+* is function libesedb_debug_print_table_group_of_bits needed?
+* print value flags
+* print part of keys as strings
+
+Tools
+* esedbinfo
+  - page summary (scan for uninitialized, empty, etc. pages)
+  - file header summary (check backup file header)
+  - summary of catalog (check backup catalog)
+  - print database state
+* esedbexport
+  - add export mode
+
+Windows search:
+* improve windows_search_decompress_byte_indexed_compressed_data
+
+File format
+* where is the root object defined? or is it implied to be object 1?
+* compressed table, column, index names ?
+* page flags
+  - 0x0400, 0x0800, 0x8000
+* tagged values
+  - flag 0x4000
+* multi value offsets
+  - flag 0x8000
+* page flags
+* page keys
+* (revision 0x11) extended page header
+* what about the first byte in 7-bit ascii compressed data
+* codepage 1200 string in Exchange EDB starts with 0xff 0xff
+* streaming file
+  - only consists of ESEDB header with paged streamed data,
+    how to reconstruct streams ?
+
+Deployment:
+* update configure
+  - improve libfdata detection
+  - improve libfguid detection
+  - improve libfwnt detection
+* update manuals
+  - add esedbexport.1
+
+Performance
+* create data definition tree in page tree for faster lookup of keys
+  keep list for sequential access (B+-tree)
+* create a UTF-8 version of run-length compressed UTF-16 string decompression function
+* use register alignment for key comparison
+* optimize libesedb_checksum_calculate_little_endian_ecc32
+
+Test suite:
+* windows search: work on index-based compression
+  - create test program to validate output
+
+Notes
+* create a root page table instead?
+  - no
+* read catalog data type defintions and convert them into column definitions?
+  - no
+
+20090913
+* initial version based on liblnk
+* see `git log' for more recent change log
+

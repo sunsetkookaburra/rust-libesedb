@@ -1,0 +1,16 @@
+[package]
+name = "libesedb-sys"
+version = "0.1.0"
+license = "LGPL-3.0-or-later"
+decription = "libesedb FFI bindings for Rust"
+documentation = "https://docs.rs/libesedb-sys"
+repository = "https://github.com/sunsetkookaburra/rust-libesedb"
+readme = "README.md"
+keywords = ["libesedb", "esent", "edb", "jet-blue", "ese"]
+categories = ["external-ffi-bindings", "database"]
+edition = "2021"
+links = "esedb"
+
+[build-dependencies]
+cc = "1.0"
+walkdir = "2"
