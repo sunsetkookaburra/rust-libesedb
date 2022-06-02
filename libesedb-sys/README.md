@@ -6,6 +6,7 @@ Rust `-sys` bindings to [`libyal/libesedb`](https://github.com/libyal/libesedb).
 
 * Have a compiler installed (if you're using Rust, you have one).
 * (Optionally) LLVM for `bindgen` to regenerate the bindings.
+* Should use `cargo build -vv` for very verbose output to verify `cc` compiling.
 
 ## Rebuilding Bindings
 
