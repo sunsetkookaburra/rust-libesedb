@@ -2,7 +2,7 @@
 name = "libesedb"
 version = "0.1.0"
 license = "LGPL-3.0-or-later"
-decription = "A safe Rust API for libesedb"
+description = "A safe Rust API for libesedb"
 documentation = "https://docs.rs/libesedb"
 repository = "https://github.com/sunsetkookaburra/rust-libesedb"
 readme = "README.md"

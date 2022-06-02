@@ -2,7 +2,7 @@
 name = "libesedb-sys"
 version = "0.1.0"
 license = "LGPL-3.0-or-later"
-decription = "libesedb FFI bindings for Rust"
+description = "libesedb FFI bindings for Rust"
 documentation = "https://docs.rs/libesedb-sys"
 repository = "https://github.com/sunsetkookaburra/rust-libesedb"
 readme = "README.md"
