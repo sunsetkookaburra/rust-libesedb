@@ -8,6 +8,14 @@ use walkdir::WalkDir;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES");
+
+    // We manually generate bindings, so there is no need to recompile the
+    // vendored C source on docs.rs
+    if env::var("DOCS_RS").is_ok() {
+        println!("cargo:warning=docs.rs build, skipping C source build because of manual bindings.");
+        return;
+    }
+
     let mut c = Build::new();
 
     let mut page_tree_orig =
