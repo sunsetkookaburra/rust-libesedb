@@ -29,4 +29,8 @@ mod record;
 mod value;
 
 pub use db::*;
+pub use iter::*;
 pub use table::*;
+pub use column::*;
+pub use record::*;
+pub use value::*;

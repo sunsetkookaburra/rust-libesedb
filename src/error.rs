@@ -57,7 +57,7 @@ fn ese_error(error: *mut *mut libesedb_error_t) -> io::Error {
     err
 }
 
-pub fn with_error<T>(f: impl FnOnce(*mut *mut libesedb_error_t) -> Option<T>) -> io::Result<T> {
+pub(crate) fn with_error<T>(f: impl FnOnce(*mut *mut libesedb_error_t) -> Option<T>) -> io::Result<T> {
     let mut error: *mut libesedb_error_t = null_mut();
     if let Some(value) = f(&mut error) {
         Ok(value)
