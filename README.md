@@ -25,7 +25,7 @@ fn main() {
 }
 ```
 
-`test/CacheStorage.edb` originates from `AppData\Local\Packages\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\AppData\CacheStorage`
+A `tests/CacheStorage.edb` can be obtained from from `AppData\Local\Packages\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\AppData\CacheStorage`
 
 ## License
 
