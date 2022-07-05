@@ -1,6 +1,6 @@
 [package]
 name = "libesedb"
-version = "0.1.2"
+version = "0.1.3"
 license = "LGPL-3.0-or-later"
 description = "A safe Rust API for libesedb"
 documentation = "https://docs.rs/libesedb"

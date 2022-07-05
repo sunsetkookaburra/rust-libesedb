@@ -1,6 +1,6 @@
 [package]
 name = "libesedb-sys"
-version = "0.1.1"
+version = "0.1.3"
 license = "LGPL-3.0-or-later"
 description = "libesedb FFI bindings for Rust"
 documentation = "https://docs.rs/libesedb-sys"
