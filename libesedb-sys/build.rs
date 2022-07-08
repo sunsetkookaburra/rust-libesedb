@@ -92,7 +92,7 @@ fn main() {
         }
     }
 
-    if cfg!(target_os="linux") {
+    if cfg!(target_os="linux") || cfg!(target_os="macos") {
         c.define("ENABLE_NLS", "1");
         c.define("HAVE_BINDTEXTDOMAIN", "1");
         c.define("HAVE_CHDIR", "1");
