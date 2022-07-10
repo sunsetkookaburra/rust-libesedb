@@ -7,21 +7,20 @@ env:
   RUST_BACKTRACE: full
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
+    name: ${{ matrix.os }} ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-unknown-windows-msvc
     steps:
       - name: Clone Repository
         uses: actions/checkout@v3
       - name: Build Linux
-        run: cargo build --target x86_64-unknown-linux-gnu --release
-      - name: List Files
-        run: ls -lA
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Clone Repository
-        uses: actions/checkout@v3
-      - name: Build Windows
-        uses: cargo build --target x86_64-unknown-windows-msvc --release
+        run: cargo build --target ${{ matrix.target }} --release
       - name: List Files
         run: ls -lA
