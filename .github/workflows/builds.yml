@@ -7,18 +7,21 @@ env:
   RUST_BACKTRACE: full
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Clone Repository
         uses: actions/checkout@v3
-      - name: Install cross-rs
-        run: cargo install cross --git https://github.com/cross-rs/cross
-      - name: Build Windows
-        run: cross build --target x86_64-pc-windows-msvc --release
       - name: Build Linux
-        run: cross build --target x86_64-unknown-linux-gnu --release
-      - name: Build Mac
-        run: cross build --target x86_64-apple-darwin --release
+        run: cargo build --target x86_64-unknown-linux-gnu --release
+      - name: List Files
+        run: ls -lA
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v3
+      - name: Build Windows
+        uses: cargo build --target x86_64-unknown-windows-msvc --release
       - name: List Files
         run: ls -lA
