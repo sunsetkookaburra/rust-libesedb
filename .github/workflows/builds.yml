@@ -1,0 +1,24 @@
+name: builds
+
+on: workflow_dispatch
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: full
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v3
+      - name: Install cross-rs
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Build Windows
+        run: cross build --target x86_64-pc-windows-msvc --release
+      - name: Build Linux
+        run: cross build --target x86_64-unknown-linux-gnu --release
+      - name: Build Mac
+        run: cross build --target x86_64-apple-darwin --release
+      - name: List Files
+        run: ls -lA
