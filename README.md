@@ -30,7 +30,6 @@ A `tests/CacheStorage.edb` can be obtained from from `AppData\Local\Packages\Mic
 ## Project TODO
 
 * [ ] Document build.rs (modifying for leaf pages, etc)
-* [ ] Investigate `cc` `features = ["parallel"]` for faster builds
 * [ ] Document function names and purposes
 
 ## License
