@@ -224,11 +224,11 @@ impl LoadEntry for Value {
                     }
                 },
                 ColumnVariant::DateTime => {
-                    let mut value = 0.0;
-                    let result = libesedb_record_get_value_floating_point_64bit(handle, entry, &mut value, err);
+                    let mut value = 0;
+                    let result = libesedb_record_get_value_64bit(handle, entry, &mut value, err);
                     match result {
                         0 => Self::Null,
-                        1 => Self::DateTime(value),
+                        1 => Self::DateTime(f64::from_bits(value)),
                         _ => return None,
                     }
                 },
