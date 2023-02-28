@@ -43,8 +43,14 @@ macro_rules! column_variants {
             fn from(x: i32) -> Self {
                 match x {
                     $( $e => Self::$i, )*
-                    _ => Self::Null
+                    _ => panic!("Unknown column type {x}")
                 }
+            }
+        }
+
+        impl From<u32> for ColumnVariant {
+            fn from(x: u32) -> Self {
+                (x as i32).into()
             }
         }
 
@@ -148,11 +154,13 @@ impl LoadEntry for Value {
 
     fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Value> {
         with_error(|err| unsafe {
-            let mut column_type = 0;
-            (libesedb_record_get_column_type(handle, entry, &mut column_type, err) == 1).then(||())?;
+            let mut raw_column_type = 0;
+            // Short circuit return if result != 1
+            (libesedb_record_get_column_type(handle, entry, &mut raw_column_type, err) == 1).then(||())?;
+            let column_type: ColumnVariant = raw_column_type.into();
             Some(match column_type {
-                0 => Self::Null,
-                1 => {
+                ColumnVariant::Null => Self::Null,
+                ColumnVariant::Bool => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_boolean(handle, entry, &mut value, err);
                     match result {
@@ -161,7 +169,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                2 => {
+                ColumnVariant::U8 => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_8bit(handle, entry, &mut value, err);
                     match result {
@@ -170,7 +178,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                3 => {
+                ColumnVariant::I16 => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_16bit(handle, entry, &mut value, err);
                     match result {
@@ -179,7 +187,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                4 => {
+                ColumnVariant::I32 => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_32bit(handle, entry, &mut value, err);
                     match result {
@@ -188,7 +196,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                5 => {
+                ColumnVariant::Currency => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_64bit(handle, entry, &mut value, err);
                     match result {
@@ -197,7 +205,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                6 => {
+                ColumnVariant::F32 => {
                     let mut value = 0.0;
                     let result = libesedb_record_get_value_floating_point_32bit(handle, entry, &mut value, err);
                     match result {
@@ -206,7 +214,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                7 => {
+                ColumnVariant::F64 => {
                     let mut value = 0.0;
                     let result = libesedb_record_get_value_floating_point_64bit(handle, entry, &mut value, err);
                     match result {
@@ -215,7 +223,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                8 => {
+                ColumnVariant::DateTime => {
                     let mut value = 0.0;
                     let result = libesedb_record_get_value_floating_point_64bit(handle, entry, &mut value, err);
                     match result {
@@ -224,7 +232,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                c @ (9 | 11) => {
+                c @ (ColumnVariant::Binary | ColumnVariant::LargeBinary) => {
                     let mut size = 0;
                     let result = libesedb_record_get_value_binary_data_size(handle, entry, &mut size, err);
                     match result {
@@ -235,8 +243,8 @@ impl LoadEntry for Value {
                             match result {
                                 0 => Self::Null,
                                 1 => match c {
-                                    9 => Self::Binary(data),
-                                    11 => Self::LargeBinary(data),
+                                    ColumnVariant::Binary => Self::Binary(data),
+                                    ColumnVariant::LargeBinary => Self::LargeBinary(data),
                                     _ => unreachable!(),
                                 },
                                 _ => return None,
@@ -245,7 +253,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                c @ (10 | 12) => {
+                c @ (ColumnVariant::Text | ColumnVariant::LargeText) => {
                     let mut size = 0;
                     let result = libesedb_record_get_value_utf8_string_size(handle, entry, &mut size, err);
                     match result {
@@ -259,8 +267,8 @@ impl LoadEntry for Value {
                                     data.pop(); // remove null byte
                                     let text = String::from_utf8_lossy(&data).into();
                                     match c {
-                                        10 => Self::Text(text),
-                                        12 => Self::LargeText(text),
+                                        ColumnVariant::Text => Self::Text(text),
+                                        ColumnVariant::LargeText => Self::LargeText(text),
                                         _ => unreachable!(),
                                     }
                                 },
@@ -270,7 +278,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                c @ (13 | 16) => {
+                c @ (ColumnVariant::SuperLarge | ColumnVariant::Guid) => {
                     let mut size = 0;
                     let result = libesedb_record_get_value_data_size(handle, entry, &mut size, err);
                     match result {
@@ -279,8 +287,8 @@ impl LoadEntry for Value {
                             let result = libesedb_record_get_value_data(handle, entry, data.as_mut_ptr(), size, err);
                             match result {
                                 1 => match c {
-                                    13 => Self::SuperLarge(data),
-                                    16 => Self::Guid(data),
+                                    ColumnVariant::SuperLarge => Self::SuperLarge(data),
+                                    ColumnVariant::Guid => Self::Guid(data),
                                     _ => unreachable!(),
                                 },
                                 _ => return None,
@@ -289,7 +297,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                14 => {
+                ColumnVariant::U32 => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_32bit(handle, entry, &mut value, err);
                     match result {
@@ -298,7 +306,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                15 => {
+                ColumnVariant::I64 => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_64bit(handle, entry, &mut value, err);
                     match result {
@@ -307,7 +315,7 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                17 => {
+                ColumnVariant::U16 => {
                     let mut value = 0;
                     let result = libesedb_record_get_value_16bit(handle, entry, &mut value, err);
                     match result {
@@ -316,7 +324,6 @@ impl LoadEntry for Value {
                         _ => return None,
                     }
                 },
-                _ => unreachable!(),
             })
         })
     }
