@@ -24,108 +24,75 @@ use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use crate::error::with_error;
 use crate::iter::LoadEntry;
 
-#[derive(Debug)]
-pub enum ColumnVariant {
-    Null,
-    Bool,
-    U8,
-    I16,
-    I32,
-    Currency,
-    F32,
-    F64,
-    DateTime,
-    Binary,
-    Text,
-    LargeBinary,
-    LargeText,
-    SuperLarge,
-    U32,
-    I64,
-    Guid,
-    U16,
-}
+macro_rules! column_variants {
+    (
+        $(
+            $(#[$attr:ident $($args:tt)*])*
+            $i:ident $(($p:pat_param, $t:ty))? = $e:ident
+        ),*$(,)?
+    ) => {
+        #[derive(Debug)]
+        pub enum ColumnVariant {
+            $(
+                $(#[$attr $($args)*])*
+                $i = $e as _
+            ),*
+        }
 
-impl From<u32> for ColumnVariant {
-    fn from(x: u32) -> Self {
-        match x {
-            0 => Self::Null,
-            1 => Self::Bool,
-            2 => Self::U8,
-            3 => Self::I16,
-            4 => Self::I32,
-            5 => Self::Currency,
-            6 => Self::F32,
-            7 => Self::F64,
-            8 => Self::DateTime,
-            9 => Self::Binary,
-            10 => Self::Text,
-            11 => Self::LargeBinary,
-            12 => Self::LargeText,
-            13 => Self::SuperLarge,
-            14 => Self::U32,
-            15 => Self::I64,
-            16 => Self::Guid,
-            17 => Self::U16,
-            _ => Self::Null,
+        impl From<i32> for ColumnVariant {
+            fn from(x: i32) -> Self {
+                match x {
+                    $( $e => Self::$i, )*
+                    _ => Self::Null
+                }
+            }
+        }
+
+        impl From<&Value> for ColumnVariant {
+            fn from(value: &Value) -> Self {
+                match value {
+                    $( Value::$i$(($p))? => Self::$i, )*
+                }
+            }
+        }
+
+        #[derive(Debug)]
+        pub enum Value {
+            $(
+                $(#[$attr $($args)*])*
+                $i$(($t))?
+            ),*
         }
     }
 }
 
-impl From<&Value> for ColumnVariant {
-    fn from(value: &Value) -> Self {
-        match value {
-            Value::Null => Self::Null,
-            Value::Bool(_) => Self::Bool,
-            Value::U8(_) => Self::U8,
-            Value::I16(_) => Self::I16,
-            Value::I32(_) => Self::I32,
-            Value::Currency(_) => Self::Currency,
-            Value::F32(_) => Self::F32,
-            Value::F64(_) => Self::F64,
-            Value::DateTime(_) => Self::DateTime,
-            Value::Binary(_) => Self::Binary,
-            Value::Text(_) => Self::Text,
-            Value::LargeBinary(_) => Self::LargeBinary,
-            Value::LargeText(_) => Self::LargeText,
-            Value::SuperLarge(_) => Self::SuperLarge,
-            Value::U32(_) => Self::U32,
-            Value::I64(_) => Self::I64,
-            Value::Guid(_) => Self::Guid,
-            Value::U16(_) => Self::U16,
-
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Value {
-    Null,
-    Bool(bool),
-    U8(u8),
-    I16(i16),
-    I32(i32),
-    Currency(i64),
-    F32(f32),
-    F64(f64),
-    DateTime(f64),
-    Binary(Vec<u8>),
-    Text(String),
-    LargeBinary(Vec<u8>),
-    LargeText(String),
-    SuperLarge(Vec<u8>),
-    U32(u32),
-    I64(i64),
-    /// A 16-byte value
-    Guid(Vec<u8>),
-    U16(u16),
+column_variants!{
+    Null = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_NULL,
+    Bool(_, bool) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_BOOLEAN,
+    U8(_, u8) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_INTEGER_8BIT_UNSIGNED,
+    I16(_, i16) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_INTEGER_16BIT_SIGNED,
+    I32(_, i32) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_INTEGER_32BIT_SIGNED,
+    Currency(_, i64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_CURRENCY,
+    F32(_, f32) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_FLOAT_32BIT,
+    F64(_, f64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DOUBLE_64BIT,
+    /// Decimal number of days since 1900.\
+    /// See: <https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp>
+    DateTime(_, f64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DATE_TIME,
+    Binary(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_BINARY_DATA,
+    Text(_, String) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_TEXT,
+    LargeBinary(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_LARGE_BINARY_DATA,
+    LargeText(_, String) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_LARGE_TEXT,
+    SuperLarge(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_SUPER_LARGE_VALUE,
+    U32(_, u32) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_INTEGER_32BIT_UNSIGNED,
+    I64(_, i64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_INTEGER_64BIT_SIGNED,
+    /// 16 byte value
+    Guid(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_GUID,
+    U16(_, u16) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_INTEGER_16BIT_UNSIGNED,
 }
 
 impl Value {
     pub fn time(&self) -> Option<SystemTime> {
         if let Self::DateTime(value) = self {
-            // decimal number of days since 1900
-            // https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp
             Some(UNIX_EPOCH - Duration::from_secs(60 * 60 * 24 * 25567) + Duration::from_secs_f64((60 * 60 * 24) as f64 * value))
         } else {
             None
