@@ -26,16 +26,20 @@ use crate::error::with_error;
 use crate::iter::{LoadEntry, IterEntries};
 use crate::value::Value;
 
+/// Instance of a ESE database record in a currently open [`Table`].
 pub struct Record<'a> {
     ptr: *mut libesedb_record_t,
     _marker: PhantomData<&'a ()>,
 }
 
 impl Record<'_> {
+    /// Load a specific column/field value by entry number.
+    /// Returned [`Value`] is bound to the lifetime of the database record.
     pub fn value(&self, entry: i32) -> io::Result<Value> {
         Value::load(self.ptr, entry)
     }
 
+    /// Returns number of values (columns/fields) in the record.
     pub fn count_values(&self) -> io::Result<i32> {
         with_error(|err| unsafe {
             let mut n = 0;
@@ -44,10 +48,30 @@ impl Record<'_> {
         })
     }
 
+    /// Create an iterator over all the (column/field) values in the table record.
+    /// The [`IterEntries`] iterator and the returned [`Value`]s
+    /// are bound to the lifetime of the database record.
+    ///
+    /// ```no_run
+    /// # use libesedb::EseDb;
+    /// # use std::io;
+    /// # fn main() -> io::Result<()> {
+    /// #     let db = EseDb::open("Catalog1.edb")?;
+    /// #     let table = db.table(0)?;
+    /// #     let record = table.record(0)?;
+    /// #
+    /// for value in record.iter_values()? {
+    ///     println!("{:?}", value?);
+    /// }
+    /// #
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn iter_values(&self) -> io::Result<IterEntries<'_, Value>> {
         Ok(IterEntries::new(self.ptr, self.count_values()?))
     }
 
+    /// When done reading, call this to free resources the record is using in memory.
     pub fn close(self) {}
 }
 

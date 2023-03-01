@@ -21,9 +21,11 @@ use std::{io, marker::PhantomData};
 
 pub trait LoadEntry: Sized {
     type Handle;
+    /// Loads an entry by its id (be it a [`Table`] in an [`EseDb`], [`Column`] or [`Record`] in a [`Table`], or [`Value`] in a [`Record`]).
     fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self>;
 }
 
+/// Struct to enable iterating over values in a table data structure.
 pub struct IterEntries<'a, T: LoadEntry> {
     handle: *mut T::Handle,
     pos: i32,

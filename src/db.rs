@@ -29,11 +29,24 @@ use crate::iter::{IterEntries, LoadEntry};
 
 const LIBESEDB_OPEN_READ: LIBESEDB_ACCESS_FLAGS = LIBESEDB_ACCESS_FLAGS_LIBESEDB_ACCESS_FLAG_READ;
 
+/// A loaded instance of an ESE database.
 pub struct EseDb {
     ptr: *mut libesedb_file_t,
 }
 
 impl EseDb {
+    /// Opens an existing ESE database file.
+    ///
+    /// ```no_run
+    /// use libesedb::EseDb;
+    /// use std::io;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let db = EseDb::open("Catalog1.edb")?;
+    ///     // ...
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn open<P: AsRef<Path>>(filename: P) -> io::Result<Self> {
         let filename = CString::new(&*filename.as_ref().to_string_lossy())?;
         with_error(|err| unsafe {
@@ -47,18 +60,24 @@ impl EseDb {
         })
     }
 
+    /// Return underlying pointer for use with `libesedb-sys`.
     pub fn as_mut_ptr(&mut self) -> *mut libesedb_table_t {
         self.ptr
     }
 
-    pub fn table(&self, entry: i32) -> io::Result<Table> {
+    /// Load a specific table by entry number.
+    /// Returned [`Table`] is bound to the lifetime of the database.
+    pub fn table<'a>(&'a self, entry: i32) -> io::Result<Table<'a>> {
         Table::load(self.ptr, entry)
     }
 
-    pub fn table_by_name(&self, name: &str) -> io::Result<Table> {
+    /// Load a specific table by name.
+    /// Returned [`Table`] is bound to the lifetime of the database.
+    pub fn table_by_name<'a>(&'a self, name: &str) -> io::Result<Table<'a>> {
         Table::from_name(self.ptr, name)
     }
 
+    /// Total number of tables in ESE database.
     pub fn count_tables(&self) -> io::Result<i32> {
         with_error(|err| unsafe {
             let mut n = 0;
@@ -67,7 +86,25 @@ impl EseDb {
         })
     }
 
-    pub fn iter_tables(&self) -> io::Result<IterEntries<'_, Table>> {
+    /// Create an iterator over all the tables in the database.
+    /// The [`IterEntries`] iterator and the returned [`Table`]s
+    /// are bound to the lifetime of the database.
+    ///
+    /// ```no_run
+    /// # use libesedb::EseDb;
+    /// # use std::io;
+    /// # fn main() -> io::Result<()> {
+    /// #     let db = EseDb::open("Catalog1.edb")?;
+    /// #
+    /// for table in db.iter_tables()? {
+    ///     let table = table?;
+    ///     println!("{}", table.name()?);
+    /// }
+    /// #
+    /// #     Ok(())
+    /// # }
+    /// ```
+    pub fn iter_tables<'a>(&'a self) -> io::Result<IterEntries<'a, Table<'a>>> {
         Ok(IterEntries::new(self.ptr, self.count_tables()?))
     }
 }

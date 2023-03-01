@@ -27,6 +27,7 @@ use crate::error::with_error;
 use crate::iter::{IterEntries, LoadEntry};
 use crate::record::Record;
 
+/// Instance of a ESE database table in a currently open [`crate::EseDb`].
 pub struct Table<'a> {
     ptr: *mut libesedb_table_t,
     _marker: PhantomData<&'a ()>,
@@ -41,6 +42,7 @@ impl Table<'_> {
         })
     }
 
+    /// Gets the name of the table.
     pub fn name(&self) -> io::Result<String> {
         with_error(|err| unsafe {
             let mut size = 0;
@@ -54,6 +56,7 @@ impl Table<'_> {
         })
     }
 
+    /// Total number of columns in table.
     pub fn count_columns(&self) -> io::Result<i32> {
         with_error(|err| unsafe {
             let mut n = 0;
@@ -61,6 +64,7 @@ impl Table<'_> {
         })
     }
 
+    /// Total number of records (rows) in table.
     pub fn count_records(&self) -> io::Result<i32> {
         with_error(|err| unsafe {
             let mut n = 0;
@@ -68,22 +72,66 @@ impl Table<'_> {
         })
     }
 
+    /// Load a specific column by entry number.
+    /// Returned [`Column`] is bound to the lifetime of the database table.
     pub fn column(&self, entry: i32) -> io::Result<Column> {
         Column::load(self.ptr, entry)
     }
 
+    /// Load a specific record (row) by entry number.
+    /// Returned [`Record`] is bound to the lifetime of the database table.
     pub fn record(&self, entry: i32) -> io::Result<Record> {
         Record::load(self.ptr, entry)
     }
 
+    /// Create an iterator over all the columns in the table.
+    /// The [`IterEntries`] iterator and the returned [`Column`]s
+    /// are bound to the lifetime of the database table.
+    ///
+    /// ```no_run
+    /// # use libesedb::EseDb;
+    /// # use std::io;
+    /// # fn main() -> io::Result<()> {
+    /// #     let db = EseDb::open("Catalog1.edb")?;
+    /// #     let table = db.table(0)?;
+    /// #
+    /// for column in table.iter_columns()? {
+    ///     println!("{}", column?.name()?);
+    /// }
+    /// #
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn iter_columns(&self) -> io::Result<IterEntries<'_, Column>> {
         Ok(IterEntries::new(self.ptr, self.count_columns()?))
     }
 
+    /// Create an iterator over all the records (rows) in the table.
+    /// The [`IterEntries`] iterator and the returned [`Record`]s
+    /// are bound to the lifetime of the database table.
+    ///
+    /// ```no_run
+    /// # use libesedb::EseDb;
+    /// # use std::io;
+    /// # fn main() -> io::Result<()> {
+    /// #     let db = EseDb::open("Catalog1.edb")?;
+    /// #     let table = db.table(0)?;
+    /// #
+    /// for record in table.iter_records()? {
+    ///     let record = record?;
+    ///     for value in record.iter_values()? {
+    ///         println!("{:?}", value?);
+    ///     }
+    /// }
+    /// #
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn iter_records(&self) -> io::Result<IterEntries<'_, Record>> {
         Ok(IterEntries::new(self.ptr, self.count_records()?))
     }
 
+    /// When done reading, call this to free resources the table is using in memory.
     pub fn close(self) {}
 }
 

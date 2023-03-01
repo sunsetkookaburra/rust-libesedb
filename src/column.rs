@@ -26,12 +26,14 @@ use crate::error::with_error;
 use crate::iter::LoadEntry;
 use crate::value::ColumnVariant;
 
+/// Instance of a ESE database column in a currently open [`Table`].
 pub struct Column<'a> {
     ptr: *mut libesedb_column_t,
     _marker: PhantomData<&'a ()>,
 }
 
 impl Column<'_> {
+    /// Gets the name of the column.
     pub fn name(&self) -> io::Result<String> {
         with_error(|err| unsafe {
             let mut size = 0;
@@ -45,6 +47,7 @@ impl Column<'_> {
         })
     }
 
+    /// Gets the entry id of the column.
     pub fn id(&self) -> io::Result<u32> {
         with_error(|err| unsafe {
             let mut id = 0;
@@ -53,6 +56,7 @@ impl Column<'_> {
         })
     }
 
+    /// Gets the type of the data stored in the column.
     pub fn variant(&self) -> io::Result<ColumnVariant> {
         with_error(|err| unsafe {
             let mut typ = 0;
@@ -61,6 +65,7 @@ impl Column<'_> {
         })
     }
 
+    /// When done reading, call this to free resources the column is using in memory.
     pub fn close(self) {}
 }
 

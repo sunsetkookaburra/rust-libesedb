@@ -1,6 +1,6 @@
 //! # rust-libesedb - Safe Rust API to libesedb
 //!
-//! # Example
+//! ## Windows File History Catalog `string` Example
 //!
 //! ```no_run
 //! use libesedb::EseDb;
