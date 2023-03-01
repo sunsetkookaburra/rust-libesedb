@@ -5,7 +5,7 @@
 [![Documentation](https://img.shields.io/docsrs/libesedb?logo=rust)](https://docs.rs/libesedb)
 [![License](https://img.shields.io/crates/l/libesedb)](https://github.com/sunsetkookaburra/rust-libesedb/blob/main/COPYING.LESSER)
 
-Safe Rust API to libesedb (via libesedb-sys).
+Safe Rust bindings to [`libyal/libesedb`](https://github.com/libyal/libesedb) (via libesedb-sys).
 
 ```rust
 use libesedb::EseDb;
@@ -32,6 +32,8 @@ A `tests/CacheStorage.edb` can be obtained from from `AppData\Local\Packages\Mic
 * [ ] Document build.rs (modifying for leaf pages, etc)
 * [ ] Document function names and purposes
 
-## License
+## License and Acknowledgement
 
 This project is made available under the [LGPL-3.0-or-later](./COPYING.LESSER).
+
+The core functionality that this library binds to is the hard work of [`Joachim Metz (~joachimmetz)`](https://github.com/joachimmetz).
