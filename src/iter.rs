@@ -21,7 +21,7 @@ use std::{io, marker::PhantomData};
 
 pub trait LoadEntry: Sized {
     type Handle;
-    /// Loads an entry by its id (be it a [`Table`] in an [`EseDb`], [`Column`] or [`Record`] in a [`Table`], or [`Value`] in a [`Record`]).
+    /// Loads an entry by its id (be it a [`crate::Table`] in an [`crate::EseDb`], [`crate::Column`] or [`crate::Record`] in a [`crate::Table`], or [`crate::Value`] in a [`crate::Record`]).
     fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self>;
 }
 

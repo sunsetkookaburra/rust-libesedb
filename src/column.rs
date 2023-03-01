@@ -26,7 +26,7 @@ use crate::error::with_error;
 use crate::iter::LoadEntry;
 use crate::value::ColumnVariant;
 
-/// Instance of a ESE database column in a currently open [`Table`].
+/// Instance of a ESE database column in a currently open [`crate::Table`].
 pub struct Column<'a> {
     ptr: *mut libesedb_column_t,
     _marker: PhantomData<&'a ()>,

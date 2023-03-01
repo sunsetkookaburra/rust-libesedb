@@ -26,7 +26,7 @@ use crate::error::with_error;
 use crate::iter::{LoadEntry, IterEntries};
 use crate::value::Value;
 
-/// Instance of a ESE database record in a currently open [`Table`].
+/// Instance of a ESE database record in a currently open [`crate::Table`].
 pub struct Record<'a> {
     ptr: *mut libesedb_record_t,
     _marker: PhantomData<&'a ()>,
