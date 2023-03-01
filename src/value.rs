@@ -18,31 +18,82 @@
  */
 
 use libesedb_sys::*;
+use std::error::Error;
+use std::fmt::Display;
 use std::io;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::error::with_error;
 use crate::iter::LoadEntry;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Filetime (u64);
+
+impl Filetime {
+    fn epoch() -> SystemTime { UNIX_EPOCH - Duration::from_secs(11644473600) }
+    fn from_100ns(x: u64) -> Self { Self(x) }
+    fn system(&self) -> SystemTime {
+        (*self).into()
+    }
+}
+
+impl From<SystemTime> for Filetime {
+    fn from(value: SystemTime) -> Self {
+        if value < Self::epoch() {
+            Self((Self::epoch().duration_since(value).unwrap().as_nanos() / 100) as _)
+        } else {
+            Self((value.duration_since(Self::epoch()).unwrap().as_nanos() / 100) as _)
+        }
+    }
+}
+
+impl From<Filetime> for SystemTime {
+    fn from(value: Filetime) -> Self {
+        Filetime::epoch() + Duration::from_nanos(value.0 * 100)
+    }
+}
+
+impl PartialEq<SystemTime> for Filetime {
+    fn eq(&self, other: &SystemTime) -> bool {
+        &self.system() == other
+    }
+}
+
+#[derive(Debug)]
+pub struct ValueTryFromError(String);
+
+impl Display for ValueTryFromError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Error for ValueTryFromError {}
+
 macro_rules! column_variants {
     (
         $(
             $(#[$attr:ident $($args:tt)*])*
-            $i:ident $(($p:pat_param, $t:ty))? = $e:ident
+            $name:ident $(($p:pat_param, $t:ty))? = $e:ident
+        ),*$(,)?
+        ;
+        $(
+            $($from:ident),+ => $into:ty
         ),*$(,)?
     ) => {
-        #[derive(Debug)]
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+        #[repr(i32)]
         pub enum ColumnVariant {
             $(
                 $(#[$attr $($args)*])*
-                $i = $e as _
+                $name = $e
             ),*
         }
 
         impl From<i32> for ColumnVariant {
             fn from(x: i32) -> Self {
                 match x {
-                    $( $e => Self::$i, )*
+                    $( $e => Self::$name, )*
                     _ => panic!("Unknown column type {x}")
                 }
             }
@@ -57,17 +108,66 @@ macro_rules! column_variants {
         impl From<&Value> for ColumnVariant {
             fn from(value: &Value) -> Self {
                 match value {
-                    $( Value::$i$(($p))? => Self::$i, )*
+                    $( Value::$name$(($p))? => Self::$name, )*
                 }
             }
         }
 
-        #[derive(Debug)]
+        #[derive(Debug, PartialEq, PartialOrd)]
+        #[repr(i32)]
         pub enum Value {
             $(
                 $(#[$attr $($args)*])*
-                $i$(($t))?
+                $name$(($t))? = $e
             ),*
+        }
+
+        $(
+        impl TryFrom<Value> for $into {
+            type Error = ValueTryFromError;
+
+            fn try_from(value: Value) -> Result<Self, Self::Error> {
+                match value {
+                    $(Value::$from(x))|+ => Ok(x),
+                    _ => Err(ValueTryFromError(format!("Cannot convert {value:?} into {}", stringify!($into))))
+                }
+            }
+        }
+
+        impl<'a> TryFrom<&'a Value> for &'a $into {
+            type Error = ValueTryFromError;
+
+            fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+                match value {
+                    $(Value::$from(ref x))|+ => Ok(x),
+                    _ => Err(ValueTryFromError(format!("Cannot convert {value:?} into {}", stringify!($into))))
+                }
+            }
+        }
+
+        impl PartialEq<$into> for Value {
+            fn eq(&self, other: &$into) -> bool {
+                self.try_into().ok() == Some(other)
+            }
+        }
+
+        impl PartialEq<Value> for $into {
+            fn eq(&self, other: &Value) -> bool {
+                other == self
+            }
+        }
+        )*
+
+        impl PartialEq<SystemTime> for Value {
+            fn eq(&self, other: &SystemTime) -> bool {
+                self.try_into().ok() == Some(&Filetime::from(*other))
+            }
+        }
+
+        impl PartialEq<Value> for SystemTime {
+            fn eq(&self, other: &Value) -> bool {
+                other == self
+            }
         }
     }
 }
@@ -81,9 +181,8 @@ column_variants! {
     Currency(_, i64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_CURRENCY,
     F32(_, f32) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_FLOAT_32BIT,
     F64(_, f64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DOUBLE_64BIT,
-    /// Decimal number of days since 1900.\
-    /// See: <https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp>
-    DateTime(_, f64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DATE_TIME,
+    /// FILETIME format: little-endian 64bit 100-nanosecond intervals since 1 jan 1601 UTC
+    DateTime(_, Filetime) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DATE_TIME,
     Binary(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_BINARY_DATA,
     Text(_, String) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_TEXT,
     LargeBinary(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_LARGE_BINARY_DATA,
@@ -94,20 +193,22 @@ column_variants! {
     /// 16 byte value
     Guid(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_GUID,
     U16(_, u16) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_INTEGER_16BIT_UNSIGNED,
+    ;
+    Bool => bool,
+    U8 => u8,
+    U16 => u16,
+    U32 => u32,
+    I16 => i16,
+    I32 => i32,
+    I64, Currency => i64,
+    F32 => f32,
+    F64 => f64,
+    Binary, LargeBinary, SuperLarge, Guid => Vec<u8>,
+    Text, LargeText => String,
+    DateTime => Filetime,
 }
 
 impl Value {
-    pub fn time(&self) -> Option<SystemTime> {
-        if let Self::DateTime(value) = self {
-            Some(
-                UNIX_EPOCH - Duration::from_secs(60 * 60 * 24 * 25567)
-                    + Duration::from_secs_f64((60 * 60 * 24) as f64 * value),
-            )
-        } else {
-            None
-        }
-    }
-
     pub fn variant(&self) -> ColumnVariant {
         self.into()
     }
@@ -130,7 +231,7 @@ impl ToString for Value {
             Value::Currency(x) => x.to_string(),
             Value::F32(x) => x.to_string(),
             Value::F64(x) => x.to_string(),
-            Value::DateTime(x) => x.to_string(),
+            Value::DateTime(x) => format!("{x:?}"),
             Value::Binary(b) | Value::LargeBinary(b) | Value::SuperLarge(b) => b
                 .iter()
                 .map(|x| format!("{x:02x}"))
@@ -236,7 +337,7 @@ impl LoadEntry for Value {
                     let result = libesedb_record_get_value_filetime(handle, entry, &mut value, err);
                     match result {
                         0 => Self::Null,
-                        1 => Self::DateTime(f64::from_bits(value)),
+                        1 => Self::DateTime(Filetime::from_100ns(value).into()),
                         _ => return None,
                     }
                 }
@@ -354,5 +455,21 @@ impl LoadEntry for Value {
                 }
             })
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::SystemTime;
+
+    #[test]
+    fn value_compare() {
+        let date = SystemTime::UNIX_EPOCH;
+        assert_eq!(date, Value::DateTime(Filetime::from_100ns(116444736000000000)));
+        assert_eq!(Value::DateTime(Filetime::from_100ns(116444736000000000)), date);
+        // 42 == Value::U8(42);
+        // assert_eq!(42, Value::U8(42));
+        assert_eq!(Value::U8(42), 42u8);
     }
 }
