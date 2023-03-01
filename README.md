@@ -5,7 +5,7 @@
 [![Documentation](https://img.shields.io/docsrs/libesedb?logo=rust)](https://docs.rs/libesedb)
 [![License](https://img.shields.io/crates/l/libesedb)](https://github.com/sunsetkookaburra/rust-libesedb/blob/main/COPYING.LESSER)
 
-Safe Rust bindings to [`libyal/libesedb`](https://github.com/libyal/libesedb) (via [`libesedb-sys`](https://github.com/sunsetkookaburra/rust-libesedb/tree/main/libesedb-sys).
+Safe Rust bindings to [`libyal/libesedb`](https://github.com/libyal/libesedb) (via [`libesedb-sys`](https://github.com/sunsetkookaburra/rust-libesedb/tree/main/libesedb-sys)).
 
 ```rust
 use libesedb::EseDb;
