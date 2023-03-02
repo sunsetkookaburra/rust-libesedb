@@ -95,7 +95,7 @@ macro_rules! column_variants {
 
             fn try_from(value: Value) -> Result<Self, Self::Error> {
                 match value {
-                    $(Value::$from(x))|+ => Ok(x.try_into().map_err(|e| ValueTryFromError(format!("one of {} ({e})", stringify!($($from),+)), stringify!($into).into()))?),
+                    $(Value::$from(x) => Ok(x.try_into().map_err(|e| ValueTryFromError(format!("one of {} ({e})", stringify!($from)), stringify!($into).into()))?),)+
                     _ => Err(ValueTryFromError(format!("{value:?}"), stringify!($into).into()))
                 }
             }
@@ -106,7 +106,7 @@ macro_rules! column_variants {
 
             fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
                 match value {
-                    $(Value::$from(ref x))|+ => Ok(x.try_into().map_err(|e| ValueTryFromError(format!("one of {} ({e})", stringify!($($from),+)), stringify!($into).into()))?),
+                    $(Value::$from(ref x) => Ok(x.try_into().map_err(|e| ValueTryFromError(format!("one of {} ({e})", stringify!($from,+)), stringify!($into).into()))?),)+
                     _ => Err(ValueTryFromError(format!("{value:?}"), stringify!($into).into()))
                 }
             }
@@ -125,6 +125,17 @@ macro_rules! column_variants {
             }
         }
         )*
+    }
+}
+
+impl<'a> TryFrom<&'a Value> for u16 {
+    type Error = ValueTryFromError;
+
+    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::U8(x) => Ok((*x).into()),
+            _ => Ok(12)
+        }
     }
 }
 
@@ -152,7 +163,7 @@ column_variants! {
     ;
     Bool => bool,
     U8 => u8,
-    U16 => u16,
+    // U16 => u16,
     U32 => u32,
     I16 => i16,
     I32 => i32,
