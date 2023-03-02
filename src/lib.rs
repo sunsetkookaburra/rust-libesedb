@@ -39,6 +39,7 @@ mod table;
 mod column;
 mod record;
 mod value;
+mod datatype;
 
 pub use db::*;
 pub use iter::*;
@@ -46,3 +47,4 @@ pub use table::*;
 pub use column::*;
 pub use record::*;
 pub use value::*;
+pub use datatype::*;

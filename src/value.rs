@@ -21,50 +21,17 @@ use libesedb_sys::*;
 use std::error::Error;
 use std::fmt::Display;
 use std::io;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::datatype::{FileTime, OleTime};
 use crate::error::with_error;
 use crate::iter::LoadEntry;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Filetime (u64);
-
-impl Filetime {
-    fn epoch() -> SystemTime { UNIX_EPOCH - Duration::from_secs(11644473600) }
-    fn from_100ns(x: u64) -> Self { Self(x) }
-    fn system(&self) -> SystemTime {
-        (*self).into()
-    }
-}
-
-impl From<SystemTime> for Filetime {
-    fn from(value: SystemTime) -> Self {
-        if value < Self::epoch() {
-            Self((Self::epoch().duration_since(value).unwrap().as_nanos() / 100) as _)
-        } else {
-            Self((value.duration_since(Self::epoch()).unwrap().as_nanos() / 100) as _)
-        }
-    }
-}
-
-impl From<Filetime> for SystemTime {
-    fn from(value: Filetime) -> Self {
-        Filetime::epoch() + Duration::from_nanos(value.0 * 100)
-    }
-}
-
-impl PartialEq<SystemTime> for Filetime {
-    fn eq(&self, other: &SystemTime) -> bool {
-        &self.system() == other
-    }
-}
-
 #[derive(Debug)]
-pub struct ValueTryFromError(String);
+pub struct ValueTryFromError(String, String);
 
 impl Display for ValueTryFromError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "libesedb::Value cannot convert {} into {}", self.0, self.1)
     }
 }
 
@@ -128,8 +95,8 @@ macro_rules! column_variants {
 
             fn try_from(value: Value) -> Result<Self, Self::Error> {
                 match value {
-                    $(Value::$from(x))|+ => Ok(x),
-                    _ => Err(ValueTryFromError(format!("Cannot convert {value:?} into {}", stringify!($into))))
+                    $(Value::$from(x))|+ => Ok(x.try_into().map_err(|e| ValueTryFromError(format!("one of {} ({e})", stringify!($($from),+)), stringify!($into).into()))?),
+                    _ => Err(ValueTryFromError(format!("{value:?}"), stringify!($into).into()))
                 }
             }
         }
@@ -139,14 +106,15 @@ macro_rules! column_variants {
 
             fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
                 match value {
-                    $(Value::$from(ref x))|+ => Ok(x),
-                    _ => Err(ValueTryFromError(format!("Cannot convert {value:?} into {}", stringify!($into))))
+                    $(Value::$from(ref x))|+ => Ok(x.try_into().map_err(|e| ValueTryFromError(format!("one of {} ({e})", stringify!($($from),+)), stringify!($into).into()))?),
+                    _ => Err(ValueTryFromError(format!("{value:?}"), stringify!($into).into()))
                 }
             }
         }
 
         impl PartialEq<$into> for Value {
             fn eq(&self, other: &$into) -> bool {
+                // println!("{}", );
                 self.try_into().ok() == Some(other)
             }
         }
@@ -157,18 +125,6 @@ macro_rules! column_variants {
             }
         }
         )*
-
-        impl PartialEq<SystemTime> for Value {
-            fn eq(&self, other: &SystemTime) -> bool {
-                self.try_into().ok() == Some(&Filetime::from(*other))
-            }
-        }
-
-        impl PartialEq<Value> for SystemTime {
-            fn eq(&self, other: &Value) -> bool {
-                other == self
-            }
-        }
     }
 }
 
@@ -182,7 +138,7 @@ column_variants! {
     F32(_, f32) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_FLOAT_32BIT,
     F64(_, f64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DOUBLE_64BIT,
     /// FILETIME format: little-endian 64bit 100-nanosecond intervals since 1 jan 1601 UTC
-    DateTime(_, Filetime) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DATE_TIME,
+    DateTime(_, u64) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_DATE_TIME,
     Binary(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_BINARY_DATA,
     Text(_, String) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_TEXT,
     LargeBinary(_, Vec<u8>) = LIBESEDB_COLUMN_TYPES_LIBESEDB_COLUMN_TYPE_LARGE_BINARY_DATA,
@@ -205,10 +161,22 @@ column_variants! {
     F64 => f64,
     Binary, LargeBinary, SuperLarge, Guid => Vec<u8>,
     Text, LargeText => String,
-    DateTime => Filetime,
+    DateTime => u64,
 }
 
 impl Value {
+    pub fn to_filetime(&self) -> Option<FileTime> {
+        match self {
+            Self::DateTime(x) => Some(FileTime::from_100ns(*x)),
+            _ => None
+        }
+    }
+    pub fn to_oletime(&self) -> Option<OleTime> {
+        match self {
+            Self::DateTime(x) => Some(OleTime::from_days(f64::from_bits(*x))),
+            _ => None
+        }
+    }
     pub fn variant(&self) -> ColumnVariant {
         self.into()
     }
@@ -231,7 +199,7 @@ impl ToString for Value {
             Value::Currency(x) => x.to_string(),
             Value::F32(x) => x.to_string(),
             Value::F64(x) => x.to_string(),
-            Value::DateTime(x) => format!("{x:?}"),
+            Value::DateTime(x) => x.to_string(),
             Value::Binary(b) | Value::LargeBinary(b) | Value::SuperLarge(b) => b
                 .iter()
                 .map(|x| format!("{x:02x}"))
@@ -337,7 +305,7 @@ impl LoadEntry for Value {
                     let result = libesedb_record_get_value_filetime(handle, entry, &mut value, err);
                     match result {
                         0 => Self::Null,
-                        1 => Self::DateTime(Filetime::from_100ns(value).into()),
+                        1 => Self::DateTime(value),
                         _ => return None,
                     }
                 }
@@ -466,10 +434,9 @@ mod tests {
     #[test]
     fn value_compare() {
         let date = SystemTime::UNIX_EPOCH;
-        assert_eq!(date, Value::DateTime(Filetime::from_100ns(116444736000000000)));
-        assert_eq!(Value::DateTime(Filetime::from_100ns(116444736000000000)), date);
-        // 42 == Value::U8(42);
-        // assert_eq!(42, Value::U8(42));
+        assert_eq!(date, Value::DateTime(116444736000000000).to_filetime().unwrap());
+        assert_eq!(Value::DateTime(116444736000000000).to_filetime().unwrap(), date);
+        assert_eq!(42, Value::U8(42));
         assert_eq!(Value::U8(42), 42u8);
     }
 }
