@@ -83,6 +83,18 @@ impl PartialEq<FileTime> for SystemTime {
     }
 }
 
+impl PartialOrd<SystemTime> for FileTime {
+    fn partial_cmp(&self, other: &SystemTime) -> Option<std::cmp::Ordering> {
+        self.to_system().partial_cmp(other)
+    }
+}
+
+impl PartialOrd<FileTime> for SystemTime {
+    fn partial_cmp(&self, other: &FileTime) -> Option<std::cmp::Ordering> {
+        other.partial_cmp(self)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 /// Time represented as fractional/decimal days since 1900 Jan 01, 0000 UTC
 pub struct OleTime(f64);
@@ -138,6 +150,18 @@ impl PartialEq<SystemTime> for OleTime {
 impl PartialEq<OleTime> for SystemTime {
     fn eq(&self, other: &OleTime) -> bool {
         other == self
+    }
+}
+
+impl PartialOrd<SystemTime> for OleTime {
+    fn partial_cmp(&self, other: &SystemTime) -> Option<std::cmp::Ordering> {
+        self.to_system().partial_cmp(other)
+    }
+}
+
+impl PartialOrd<OleTime> for SystemTime {
+    fn partial_cmp(&self, other: &OleTime) -> Option<std::cmp::Ordering> {
+        other.partial_cmp(self)
     }
 }
 
