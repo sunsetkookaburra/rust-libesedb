@@ -37,7 +37,7 @@ impl Table<'_> {
     pub(crate) fn from_name(handle: *mut libesedb_file_t, name: &str) -> io::Result<Self> {
         with_error(|err| unsafe {
             let mut ptr = null_mut();
-            (libesedb_file_get_table_by_utf8_name(handle, name.as_ptr(), name.len() as _, &mut ptr, err) == 1).then(||())?;
+            (libesedb_file_get_table_by_utf8_name(handle, name.as_ptr(), name.len() as _, &mut ptr, err) == 1).then_some(..)?;
             Some(Self { ptr, _marker: PhantomData })
         })
     }
@@ -46,9 +46,9 @@ impl Table<'_> {
     pub fn name(&self) -> io::Result<String> {
         with_error(|err| unsafe {
             let mut size = 0;
-            (libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == 1).then(||())?;
+            (libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == 1).then_some(..)?;
             let mut name = vec![0; size as _];
-            (libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1).then(||())?;
+            (libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1).then_some(..)?;
             name.pop(); // remove null byte
             Some(name)
         }).and_then(|name| {
@@ -60,7 +60,7 @@ impl Table<'_> {
     pub fn count_columns(&self) -> io::Result<i32> {
         with_error(|err| unsafe {
             let mut n = 0;
-            (libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == 1).then(|| n)
+            (libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == 1).then_some(n)
         })
     }
 
@@ -68,7 +68,7 @@ impl Table<'_> {
     pub fn count_records(&self) -> io::Result<i32> {
         with_error(|err| unsafe {
             let mut n = 0;
-            (libesedb_table_get_number_of_records(self.ptr, &mut n, err) == 1).then(|| n)
+            (libesedb_table_get_number_of_records(self.ptr, &mut n, err) == 1).then_some(n)
         })
     }
 
@@ -150,7 +150,7 @@ impl LoadEntry for Table<'_> {
         with_error(|err| {
             let mut ptr = null_mut();
             (unsafe { libesedb_file_get_table(handle, entry, &mut ptr, err) } == 1)
-            .then(|| Self { ptr, _marker: PhantomData })
+            .then_some(Self { ptr, _marker: PhantomData })
         })
     }
 }
