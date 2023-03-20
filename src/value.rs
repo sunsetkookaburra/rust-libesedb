@@ -249,7 +249,7 @@ impl ToString for Value {
 impl LoadEntry for Value {
     type Handle = libesedb_record_t;
 
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Value> {
+    unsafe fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Value> {
         with_error(|err| unsafe {
             let mut raw_column_type = 0;
             // Short circuit return if result != 1

@@ -75,13 +75,17 @@ impl Table<'_> {
     /// Load a specific column by entry number.
     /// Returned [`Column`] is bound to the lifetime of the database table.
     pub fn column(&self, entry: i32) -> io::Result<Column> {
-        Column::load(self.ptr, entry)
+        unsafe {
+            Column::load(self.ptr, entry)
+        }
     }
 
     /// Load a specific record (row) by entry number.
     /// Returned [`Record`] is bound to the lifetime of the database table.
     pub fn record(&self, entry: i32) -> io::Result<Record> {
-        Record::load(self.ptr, entry)
+        unsafe {
+            Record::load(self.ptr, entry)
+        }
     }
 
     /// Create an iterator over all the columns in the table.
@@ -146,7 +150,7 @@ impl Drop for Table<'_> {
 impl LoadEntry for Table<'_> {
     type Handle = libesedb_file_t;
 
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
+    unsafe fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
         with_error(|err| {
             let mut ptr = null_mut();
             (unsafe { libesedb_file_get_table(handle, entry, &mut ptr, err) } == 1)

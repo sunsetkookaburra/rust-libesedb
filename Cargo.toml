@@ -10,6 +10,9 @@ keywords = ["libesedb", "esent", "edb", "jet-blue", "ese"]
 categories = ["database"]
 edition = "2021"
 
+debuginfo-level = 1
+jemalloc = false
+
 [dependencies]
 libesedb-sys = { path = "libesedb-sys", version = "0.1.2" }
 time = { version = "0.3.20", features = ["formatting", "macros"] }

@@ -36,7 +36,9 @@ impl Record<'_> {
     /// Load a specific column/field value by entry number.
     /// Returned [`Value`] is bound to the lifetime of the database record.
     pub fn value(&self, entry: i32) -> io::Result<Value> {
-        Value::load(self.ptr, entry)
+        unsafe {
+            Value::load(self.ptr, entry)
+        }
     }
 
     /// Returns number of values (columns/fields) in the record.
@@ -86,7 +88,7 @@ impl Drop for Record<'_> {
 impl LoadEntry for Record<'_> {
     type Handle = libesedb_table_t;
 
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
+    unsafe fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
         with_error(|err| unsafe {
             let mut ptr = null_mut();
             (libesedb_table_get_record(handle, entry, &mut ptr, err) == 1)

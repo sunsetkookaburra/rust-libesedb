@@ -68,7 +68,9 @@ impl EseDb {
     /// Load a specific table by entry number.
     /// Returned [`Table`] is bound to the lifetime of the database.
     pub fn table<'a>(&'a self, entry: i32) -> io::Result<Table<'a>> {
-        Table::load(self.ptr, entry)
+        unsafe {
+            Table::load(self.ptr, entry)
+        }
     }
 
     /// Load a specific table by name.

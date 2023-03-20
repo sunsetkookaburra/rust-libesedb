@@ -22,7 +22,7 @@ use std::{io, marker::PhantomData};
 pub trait LoadEntry: Sized {
     type Handle;
     /// Loads an entry by its id (be it a [`crate::Table`] in an [`crate::EseDb`], [`crate::Column`] or [`crate::Record`] in a [`crate::Table`], or [`crate::Value`] in a [`crate::Record`]).
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self>;
+    unsafe fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self>;
 }
 
 /// Struct to enable iterating over values in a table data structure.
@@ -35,7 +35,12 @@ pub struct IterEntries<'a, T: LoadEntry> {
 
 impl<T: LoadEntry> IterEntries<'_, T> {
     pub fn new(handle: *mut T::Handle, max: i32) -> Self {
-        Self { handle, pos: 0, max, _marker: PhantomData }
+        Self {
+            handle,
+            pos: 0,
+            max,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -44,7 +49,7 @@ impl<T: LoadEntry> Iterator for IterEntries<'_, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos < self.max {
-            let val = T::load(self.handle, self.pos);
+            let val = unsafe { T::load(self.handle, self.pos) };
             self.pos += 1;
             Some(val)
         } else {

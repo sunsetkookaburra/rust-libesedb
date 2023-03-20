@@ -80,7 +80,7 @@ impl Drop for Column<'_> {
 impl LoadEntry for Column<'_> {
     type Handle = libesedb_column_t;
 
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
+    unsafe fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
         with_error(|err| unsafe {
             let mut ptr = null_mut();
             (libesedb_table_get_column(handle as _, entry, &mut ptr, 0, err) == 1)
