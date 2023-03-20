@@ -254,7 +254,7 @@ impl LoadEntry for Value {
             let mut raw_column_type = 0;
             // Short circuit return if result != 1
             (libesedb_record_get_column_type(handle, entry, &mut raw_column_type, err) == 1)
-                .then(|| ())?;
+                .then_some(())?;
             let column_type: ColumnVariant = raw_column_type.into();
             Some(match column_type {
                 ColumnVariant::Null => Self::Null(()),

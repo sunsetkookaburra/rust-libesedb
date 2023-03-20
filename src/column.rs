@@ -37,12 +37,14 @@ impl Column<'_> {
     pub fn name(&self) -> io::Result<String> {
         with_error(|err| unsafe {
             let mut size = 0;
-            (libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == 1).then(||())?;
+            (libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == 1).then_some(())?;
             let mut name = vec![0; size as _];
-            (libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1).then(||())?;
+            (libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1)
+                .then_some(())?;
             name.pop(); // remove null byte
             Some(name)
-        }).and_then(|name| {
+        })
+        .and_then(|name| {
             String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
         })
     }
@@ -51,8 +53,7 @@ impl Column<'_> {
     pub fn id(&self) -> io::Result<u32> {
         with_error(|err| unsafe {
             let mut id = 0;
-            (libesedb_column_get_identifier(self.ptr, &mut id, err) == 1)
-            .then(|| id)
+            (libesedb_column_get_identifier(self.ptr, &mut id, err) == 1).then_some(id)
         })
     }
 
@@ -60,7 +61,7 @@ impl Column<'_> {
     pub fn variant(&self) -> io::Result<ColumnVariant> {
         with_error(|err| unsafe {
             let mut typ = 0;
-            (libesedb_column_get_type(self.ptr, &mut typ, err) == 1).then(||())?;
+            (libesedb_column_get_type(self.ptr, &mut typ, err) == 1).then_some(())?;
             Some(typ.into())
         })
     }
@@ -83,8 +84,10 @@ impl LoadEntry for Column<'_> {
     unsafe fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
         with_error(|err| unsafe {
             let mut ptr = null_mut();
-            (libesedb_table_get_column(handle as _, entry, &mut ptr, 0, err) == 1)
-            .then(|| Self { ptr, _marker: PhantomData })
+            (libesedb_table_get_column(handle as _, entry, &mut ptr, 0, err) == 1).then_some(Self {
+                ptr,
+                _marker: PhantomData,
+            })
         })
     }
 }

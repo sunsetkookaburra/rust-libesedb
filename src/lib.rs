@@ -10,7 +10,6 @@
 //! ```no_run
 //! use libesedb::EseDb;
 //!
-//! fn main() {
 //!     let filename = std::env::args()
 //!         .nth(1)
 //!         .unwrap_or("Catalog1.edb".to_string());
@@ -22,7 +21,6 @@
 //!         let vals = rec.iter_values().unwrap().map(|v| v.unwrap_or_default().to_string()).collect::<Vec<_>>();
 //!         println!("{}", vals.join("\t"));
 //!     }
-//! }
 //! ```
 //!
 //! ## License and Acknowledgement

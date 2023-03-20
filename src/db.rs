@@ -51,7 +51,7 @@ impl EseDb {
         let filename = CString::new(&*filename.as_ref().to_string_lossy())?;
         with_error(|err| unsafe {
             let mut ptr = null_mut();
-            (libesedb_file_initialize(&mut ptr, err) == 1).then(||())?;
+            (libesedb_file_initialize(&mut ptr, err) == 1).then_some(())?;
             if libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) != 1 {
                 libesedb_file_free(&mut ptr, null_mut());
                 return None
@@ -67,7 +67,7 @@ impl EseDb {
 
     /// Load a specific table by entry number.
     /// Returned [`Table`] is bound to the lifetime of the database.
-    pub fn table<'a>(&'a self, entry: i32) -> io::Result<Table<'a>> {
+    pub fn table(&self, entry: i32) -> io::Result<Table> {
         unsafe {
             Table::load(self.ptr, entry)
         }
@@ -84,7 +84,7 @@ impl EseDb {
         with_error(|err| unsafe {
             let mut n = 0;
             (libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == 1)
-            .then(|| n)
+            .then_some(n)
         })
     }
 
@@ -106,7 +106,7 @@ impl EseDb {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_tables<'a>(&'a self) -> io::Result<IterEntries<'a, Table<'a>>> {
+    pub fn iter_tables(&self) -> io::Result<IterEntries<Table>> {
         Ok(IterEntries::new(self.ptr, self.count_tables()?))
     }
 }

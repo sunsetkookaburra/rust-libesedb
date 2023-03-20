@@ -23,7 +23,7 @@ use std::marker::PhantomData;
 use std::ptr::null_mut;
 
 use crate::error::with_error;
-use crate::iter::{LoadEntry, IterEntries};
+use crate::iter::{IterEntries, LoadEntry};
 use crate::value::Value;
 
 /// Instance of a ESE database record in a currently open [`crate::Table`].
@@ -36,17 +36,14 @@ impl Record<'_> {
     /// Load a specific column/field value by entry number.
     /// Returned [`Value`] is bound to the lifetime of the database record.
     pub fn value(&self, entry: i32) -> io::Result<Value> {
-        unsafe {
-            Value::load(self.ptr, entry)
-        }
+        unsafe { Value::load(self.ptr, entry) }
     }
 
     /// Returns number of values (columns/fields) in the record.
     pub fn count_values(&self) -> io::Result<i32> {
         with_error(|err| unsafe {
             let mut n = 0;
-            (libesedb_record_get_number_of_values(self.ptr, &mut n, err) == 1)
-            .then(|| n)
+            (libesedb_record_get_number_of_values(self.ptr, &mut n, err) == 1).then_some(n)
         })
     }
 
@@ -91,8 +88,10 @@ impl LoadEntry for Record<'_> {
     unsafe fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
         with_error(|err| unsafe {
             let mut ptr = null_mut();
-            (libesedb_table_get_record(handle, entry, &mut ptr, err) == 1)
-            .then(|| Self { ptr, _marker: PhantomData })
+            (libesedb_table_get_record(handle, entry, &mut ptr, err) == 1).then_some(Self {
+                ptr,
+                _marker: PhantomData,
+            })
         })
     }
 }
