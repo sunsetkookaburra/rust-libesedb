@@ -72,7 +72,7 @@ macro_rules! column_variants {
             }
         }
 
-        #[derive(Debug, PartialEq, PartialOrd)]
+        #[derive(Debug, PartialEq, PartialOrd, Clone)]
         #[repr(i32)]
         pub enum Value {
             $(
