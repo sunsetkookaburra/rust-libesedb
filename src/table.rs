@@ -36,16 +36,31 @@ pub struct Table<'a> {
 impl Table<'_> {
     pub(crate) fn from_name(handle: *mut libesedb_file_t, name: &str) -> io::Result<Self> {
         let mut ptr = null_mut();
-        with_error_if(|err| unsafe { libesedb_file_get_table_by_utf8_name(handle, name.as_ptr(), name.len() as _, &mut ptr, err) == -1 })?;
-        Ok(Self { ptr, _marker: PhantomData })
+        with_error_if(|err| unsafe {
+            libesedb_file_get_table_by_utf8_name(
+                handle,
+                name.as_ptr(),
+                name.len() as _,
+                &mut ptr,
+                err,
+            ) == -1
+        })?;
+        Ok(Self {
+            ptr,
+            _marker: PhantomData,
+        })
     }
 
     /// Gets the name of the table.
     pub fn name(&self) -> io::Result<String> {
         let mut size = 0;
-        with_error_if(|err| unsafe { libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == -1
+        })?;
         let mut name = Vec::with_capacity(size as _);
-        with_error_if(|err| unsafe { libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == -1
+        })?;
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
@@ -53,14 +68,18 @@ impl Table<'_> {
     /// Total number of columns in table.
     pub fn count_columns(&self) -> io::Result<i32> {
         let mut n = 0;
-        with_error_if(|err| unsafe { libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == -1
+        })?;
         Ok(n)
     }
 
     /// Total number of records (rows) in table.
     pub fn count_records(&self) -> io::Result<i32> {
         let mut n = 0;
-        with_error_if(|err| unsafe { libesedb_table_get_number_of_records(self.ptr, &mut n, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_table_get_number_of_records(self.ptr, &mut n, err) == -1
+        })?;
         Ok(n)
     }
 
@@ -128,8 +147,13 @@ impl Table<'_> {
 
     pub(crate) fn load<'a>(db_handle: *mut libesedb_file_t, entry: i32) -> io::Result<Table<'a>> {
         let mut ptr = null_mut();
-        with_error_if(|err| unsafe { libesedb_file_get_table(db_handle, entry, &mut ptr, err) == -1 })?;
-        Ok(Table::<'a> { ptr, _marker: PhantomData })
+        with_error_if(|err| unsafe {
+            libesedb_file_get_table(db_handle, entry, &mut ptr, err) == -1
+        })?;
+        Ok(Table::<'a> {
+            ptr,
+            _marker: PhantomData,
+        })
     }
 }
 

@@ -51,9 +51,13 @@ impl EseDb {
         let filename = CString::new(&*filename.as_ref().to_string_lossy())?;
         let mut ptr = null_mut();
         with_error_if(|err| unsafe { libesedb_file_initialize(&mut ptr, err) == -1 })?;
-        if let Err(e) = with_error_if(|err| unsafe { libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) == -1 }) {
-            unsafe { libesedb_file_free(&mut ptr, null_mut()); }
-            return Err(e)
+        if let Err(e) = with_error_if(|err| unsafe {
+            libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) == -1
+        }) {
+            unsafe {
+                libesedb_file_free(&mut ptr, null_mut());
+            }
+            return Err(e);
         }
         Ok(Self { ptr })
     }
@@ -78,7 +82,9 @@ impl EseDb {
     /// Total number of tables in ESE database.
     pub fn count_tables(&self) -> io::Result<i32> {
         let mut n = 0;
-        with_error_if(|err| unsafe { libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == -1
+        })?;
         Ok(n)
     }
 

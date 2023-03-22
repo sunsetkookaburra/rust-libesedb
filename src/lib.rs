@@ -29,16 +29,15 @@
 //!
 //! The core functionality that this library binds to is the hard work of [`Joachim Metz (~joachimmetz)`](https://github.com/joachimmetz).
 
-
-mod error;
-mod db;
-mod table;
 mod column;
+mod db;
+mod error;
 mod record;
+mod table;
 mod value;
 
-pub use db::*;
-pub use table::*;
 pub use column::*;
+pub use db::*;
 pub use record::*;
+pub use table::*;
 pub use value::*;

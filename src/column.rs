@@ -22,8 +22,8 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::Value;
 use crate::error::with_error_if;
+use crate::Value;
 
 /// Instance of a ESE database column in a currently open [`crate::Table`].
 pub struct Column<'a> {
@@ -35,9 +35,13 @@ impl Column<'_> {
     /// Gets the name of the column.
     pub fn name(&self) -> io::Result<String> {
         let mut size = 0;
-        with_error_if(|err| unsafe { libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == -1
+        })?;
         let mut name = Vec::with_capacity(size as _);
-        with_error_if(|err| unsafe { libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == -1
+        })?;
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
@@ -45,7 +49,9 @@ impl Column<'_> {
     /// Gets the entry id of the column.
     pub fn id(&self) -> io::Result<u32> {
         let mut id = 0;
-        with_error_if(|err| unsafe { libesedb_column_get_identifier(self.ptr, &mut id, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_column_get_identifier(self.ptr, &mut id, err) == -1
+        })?;
         Ok(id)
     }
 
@@ -59,10 +65,18 @@ impl Column<'_> {
     /// When done reading, call this to free resources the column is using in memory.
     pub fn close(self) {}
 
-    pub(crate) fn load<'a>(table_handle: *mut libesedb_table_t, entry: i32) -> io::Result<Column<'a>> {
+    pub(crate) fn load<'a>(
+        table_handle: *mut libesedb_table_t,
+        entry: i32,
+    ) -> io::Result<Column<'a>> {
         let mut ptr = null_mut();
-        with_error_if(|err| unsafe { libesedb_table_get_column(table_handle, entry, &mut ptr, 0, err) == -1 })?;
-        Ok(Column::<'a> { ptr, _marker: PhantomData })
+        with_error_if(|err| unsafe {
+            libesedb_table_get_column(table_handle, entry, &mut ptr, 0, err) == -1
+        })?;
+        Ok(Column::<'a> {
+            ptr,
+            _marker: PhantomData,
+        })
     }
 }
 

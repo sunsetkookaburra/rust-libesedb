@@ -42,7 +42,9 @@ impl Record<'_> {
     /// Returns number of values (columns/fields) in the record.
     pub fn count_values(&self) -> io::Result<i32> {
         let mut n = 0;
-        with_error_if(|err| unsafe { libesedb_record_get_number_of_values(self.ptr, &mut n, err) == -1 })?;
+        with_error_if(|err| unsafe {
+            libesedb_record_get_number_of_values(self.ptr, &mut n, err) == -1
+        })?;
         Ok(n)
     }
 
@@ -72,10 +74,18 @@ impl Record<'_> {
     /// When done reading, call this to free resources the record is using in memory.
     pub fn close(self) {}
 
-    pub(crate) fn load<'a>(table_handle: *mut libesedb_table_t, entry: i32) -> io::Result<Record<'a>> {
+    pub(crate) fn load<'a>(
+        table_handle: *mut libesedb_table_t,
+        entry: i32,
+    ) -> io::Result<Record<'a>> {
         let mut ptr = null_mut();
-        with_error_if(|err| unsafe { libesedb_table_get_record(table_handle, entry, &mut ptr, err) == -1 })?;
-        Ok(Record::<'a> { ptr, _marker: PhantomData })
+        with_error_if(|err| unsafe {
+            libesedb_table_get_record(table_handle, entry, &mut ptr, err) == -1
+        })?;
+        Ok(Record::<'a> {
+            ptr,
+            _marker: PhantomData,
+        })
     }
 }
 
