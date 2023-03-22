@@ -22,8 +22,8 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
+use crate::Value;
 use crate::error::with_error_if;
-use crate::value::ColumnVariant;
 
 /// Instance of a ESE database column in a currently open [`crate::Table`].
 pub struct Column<'a> {
@@ -49,11 +49,11 @@ impl Column<'_> {
         Ok(id)
     }
 
-    /// Gets the type of the data stored in the column.
-    pub fn variant(&self) -> io::Result<ColumnVariant> {
+    /// Gets an empty [`Value`] representing the type of the data stored in the column.
+    pub fn variant(&self) -> io::Result<Value> {
         let mut typ = 0;
         with_error_if(|err| unsafe { libesedb_column_get_type(self.ptr, &mut typ, err) == -1 })?;
-        Ok(typ.into())
+        Ok(Value::default_variant(typ as _))
     }
 
     /// When done reading, call this to free resources the column is using in memory.

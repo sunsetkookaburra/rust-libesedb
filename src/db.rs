@@ -71,7 +71,7 @@ impl EseDb {
 
     /// Load a specific table by name.
     /// Returned [`Table`] is bound to the lifetime of the database.
-    pub fn table_by_name<'a>(&'a self, name: &str) -> io::Result<Table<'a>> {
+    pub fn table_by_name(&self, name: &str) -> io::Result<Table> {
         Table::from_name(self.ptr, name)
     }
 
