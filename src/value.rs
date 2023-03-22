@@ -40,17 +40,17 @@ macro_rules! column_variants {
         ),*$(,)?
     ) => {
         #[derive(Debug, PartialEq, PartialOrd, Clone)]
-        #[repr(i32)]
+        /// Represents a field value from a table.
         pub enum Value {
             $(
                 $(#[$attr $($args)*])*
-                $name($t) = $e
+                $name($t)
             ),*
         }
 
         impl Value {
-            pub(crate) fn default_variant(variant: i32) -> Self {
-                match variant {
+            pub(crate) fn from_discriminant(x: i32) -> Self {
+                match x {
                     $( $e => Self::$name(Default::default()), )*
                     _ => Self::Null(())
                 }
@@ -181,7 +181,7 @@ impl Value {
         with_error_if(|err| unsafe {
             libesedb_record_get_column_type(column_handle, entry, &mut column_type, err) != 1
         })?;
-        Ok(match Self::default_variant(column_type as _) {
+        Ok(match Self::from_discriminant(column_type as _) {
             Self::Null(_) => Self::Null(()),
             Self::Bool(_) => {
                 let mut value = 0;

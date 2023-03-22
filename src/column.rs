@@ -59,7 +59,7 @@ impl Column<'_> {
     pub fn variant(&self) -> io::Result<Value> {
         let mut typ = 0;
         with_error_if(|err| unsafe { libesedb_column_get_type(self.ptr, &mut typ, err) == -1 })?;
-        Ok(Value::default_variant(typ as _))
+        Ok(Value::from_discriminant(typ as _))
     }
 
     /// When done reading, call this to free resources the column is using in memory.
