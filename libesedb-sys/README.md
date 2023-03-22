@@ -38,10 +38,10 @@ libesedb
 Copyright (C) 2009-2021, Joachim Metz <joachim.metz@gmail.com>
 
 libesedb-sys
-Copyright (C) 2022, Oliver Lenehan ~sunsetkookaburra
+Copyright (C) 2022-2023, Oliver Lenehan ~sunsetkookaburra
 ```
 
 ## License
 
-* `libesedb` is available under the LGPL-3.0. A distribution version of the library is bundled here.
-* This `-sys` binding is also made available under the LGPL-3.0.
+* [`libyal/libesedb`](https://github.com/libyal/libesedb) is the hard work of [`Joachim Metz (~joachimmetz)`](https://github.com/joachimmetz), available under the [LGPL-3.0-or-later](./COPYING.LESSER). A distribution version of the library is bundled here.
+* This `-sys` binding is also made available under the [LGPL-3.0-or-later](./COPYING.LESSER).

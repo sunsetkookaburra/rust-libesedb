@@ -35,6 +35,6 @@ A `tests/CacheStorage.edb` can be obtained from from `AppData\Local\Packages\Mic
 
 This project is made available under the [LGPL-3.0-or-later](./COPYING.LESSER).
 
-The `time` crate (used in FILETIME/OLETIME conversions) is available under the  [MIT License](https://github.com/time-rs/time/blob/main/LICENSE-MIT).
+The `time` crate (used in FILETIME/OLETIME conversions) is available under the [MIT License](https://github.com/time-rs/time/blob/main/LICENSE-MIT).
 
 The core functionality that this library binds to is the hard work of [`Joachim Metz (~joachimmetz)`](https://github.com/joachimmetz).
