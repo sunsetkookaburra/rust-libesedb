@@ -22,8 +22,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::error::with_error;
-use crate::iter::LoadEntry;
+use crate::error::with_error_if;
 use crate::value::ColumnVariant;
 
 /// Instance of a ESE database column in a currently open [`crate::Table`].
@@ -35,56 +34,45 @@ pub struct Column<'a> {
 impl Column<'_> {
     /// Gets the name of the column.
     pub fn name(&self) -> io::Result<String> {
-        with_error(|err| unsafe {
-            let mut size = 0;
-            (libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == 1).then(||())?;
-            let mut name = vec![0; size as _];
-            (libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1).then(||())?;
-            name.pop(); // remove null byte
-            Some(name)
-        }).and_then(|name| {
-            String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-        })
+        let mut size = 0;
+        with_error_if(|err| unsafe { libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == -1 })?;
+        let mut name = Vec::with_capacity(size as _);
+        with_error_if(|err| unsafe { libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == -1 })?;
+        name.pop();
+        String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 
     /// Gets the entry id of the column.
     pub fn id(&self) -> io::Result<u32> {
-        with_error(|err| unsafe {
-            let mut id = 0;
-            (libesedb_column_get_identifier(self.ptr, &mut id, err) == 1)
-            .then(|| id)
-        })
+        let mut id = 0;
+        with_error_if(|err| unsafe { libesedb_column_get_identifier(self.ptr, &mut id, err) == -1 })?;
+        Ok(id)
     }
 
     /// Gets the type of the data stored in the column.
     pub fn variant(&self) -> io::Result<ColumnVariant> {
-        with_error(|err| unsafe {
-            let mut typ = 0;
-            (libesedb_column_get_type(self.ptr, &mut typ, err) == 1).then(||())?;
-            Some(typ.into())
-        })
+        let mut typ = 0;
+        with_error_if(|err| unsafe { libesedb_column_get_type(self.ptr, &mut typ, err) == -1 })?;
+        Ok(typ.into())
     }
 
     /// When done reading, call this to free resources the column is using in memory.
     pub fn close(self) {}
+
+    pub(crate) fn load<'a>(table_handle: *mut libesedb_table_t, entry: i32) -> io::Result<Column<'a>> {
+        let mut ptr = null_mut();
+        with_error_if(|err| unsafe { libesedb_table_get_column(table_handle, entry, &mut ptr, 0, err) == -1 })?;
+        Ok(Column::<'a> { ptr, _marker: PhantomData })
+    }
 }
 
 impl Drop for Column<'_> {
     fn drop(&mut self) {
+        // Safety:
+        //   libesedb_column.c::libesedb_column_free only fails if &mut self.ptr is null,
+        //   but this can never hold since it references valid memory
         unsafe {
             libesedb_column_free(&mut self.ptr, null_mut());
         }
-    }
-}
-
-impl LoadEntry for Column<'_> {
-    type Handle = libesedb_column_t;
-
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
-        with_error(|err| unsafe {
-            let mut ptr = null_mut();
-            (libesedb_table_get_column(handle as _, entry, &mut ptr, 0, err) == 1)
-            .then(|| Self { ptr, _marker: PhantomData })
-        })
     }
 }

@@ -22,8 +22,8 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::error::with_error;
-use crate::iter::{LoadEntry, IterEntries};
+use crate::error::with_error_if;
+// use crate::iter::{LoadEntry, IterEntries};
 use crate::value::Value;
 
 /// Instance of a ESE database record in a currently open [`crate::Table`].
@@ -41,11 +41,9 @@ impl Record<'_> {
 
     /// Returns number of values (columns/fields) in the record.
     pub fn count_values(&self) -> io::Result<i32> {
-        with_error(|err| unsafe {
-            let mut n = 0;
-            (libesedb_record_get_number_of_values(self.ptr, &mut n, err) == 1)
-            .then(|| n)
-        })
+        let mut n = 0;
+        with_error_if(|err| unsafe { libesedb_record_get_number_of_values(self.ptr, &mut n, err) == -1 })?;
+        Ok(n)
     }
 
     /// Create an iterator over all the (column/field) values in the table record.
@@ -67,12 +65,18 @@ impl Record<'_> {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_values(&self) -> io::Result<IterEntries<'_, Value>> {
-        Ok(IterEntries::new(self.ptr, self.count_values()?))
+    pub fn iter_values(&self) -> io::Result<impl Iterator<Item = io::Result<Value>> + '_> {
+        Ok((0..self.count_values()?).map(|i| Value::load(self.ptr, i)))
     }
 
     /// When done reading, call this to free resources the record is using in memory.
     pub fn close(self) {}
+
+    pub(crate) fn load<'a>(table_handle: *mut libesedb_table_t, entry: i32) -> io::Result<Record<'a>> {
+        let mut ptr = null_mut();
+        with_error_if(|err| unsafe { libesedb_table_get_record(table_handle, entry, &mut ptr, err) == -1 })?;
+        Ok(Record::<'a> { ptr, _marker: PhantomData })
+    }
 }
 
 impl Drop for Record<'_> {
@@ -80,17 +84,5 @@ impl Drop for Record<'_> {
         unsafe {
             libesedb_record_free(&mut self.ptr, null_mut());
         }
-    }
-}
-
-impl LoadEntry for Record<'_> {
-    type Handle = libesedb_table_t;
-
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
-        with_error(|err| unsafe {
-            let mut ptr = null_mut();
-            (libesedb_table_get_record(handle, entry, &mut ptr, err) == 1)
-            .then(|| Self { ptr, _marker: PhantomData })
-        })
     }
 }

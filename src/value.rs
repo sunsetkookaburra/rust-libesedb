@@ -20,10 +20,10 @@
 use libesedb_sys::*;
 use std::io;
 use std::time::SystemTime;
+use time::{ext::NumericalDuration, macros::datetime, Duration, OffsetDateTime};
 
-use crate::datatype::{FileTime, OleTime};
-use crate::error::with_error;
-use crate::iter::LoadEntry;
+use crate::error::with_error_if;
+// use crate::iter::LoadEntry;
 
 macro_rules! column_variants {
     (
@@ -72,7 +72,7 @@ macro_rules! column_variants {
             }
         }
 
-        #[derive(Debug, PartialEq, PartialOrd)]
+        #[derive(Debug, PartialEq, PartialOrd, Clone)]
         #[repr(i32)]
         pub enum Value {
             $(
@@ -188,22 +188,206 @@ column_variants! {
 }
 
 impl Value {
-    pub fn to_filetime(&self) -> Option<FileTime> {
+    pub fn to_filetime(&self) -> Option<SystemTime> {
         match self {
-            Self::DateTime(x) => Some(FileTime::from_100ns(*x)),
+            Self::DateTime(x) => Some(systemtime_from_filetime(*x)),
             _ => None
         }
     }
 
-    pub fn to_oletime(&self) -> Option<OleTime> {
+    pub fn to_oletime(&self) -> Option<SystemTime> {
         match self {
-            Self::DateTime(x) => Some(OleTime::from_days(f64::from_bits(*x))),
+            Self::DateTime(x) => Some(systemtime_from_oletime(f64::from_bits(*x))),
             _ => None
         }
     }
 
     pub fn variant(&self) -> ColumnVariant {
         self.into()
+    }
+
+    pub(crate) fn load(column_handle: *mut libesedb_column_t, entry: i32) -> io::Result<Value> {
+        let mut raw_column_type = 0;
+        with_error_if(|err| unsafe { libesedb_record_get_column_type(column_handle, entry, &mut raw_column_type, err) != 1 })?;
+        let column_type = ColumnVariant::from(raw_column_type);
+        Ok(match column_type {
+            ColumnVariant::Null => Self::Null(()),
+            ColumnVariant::Bool => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_boolean(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::Bool(value != 0),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::U8 => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_8bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::U8(value),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::I16 => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_16bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::I16(value as i16),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::I32 => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_32bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::I32(value as i32),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::Currency => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_64bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::Currency(value as i64),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::F32 => {
+                let mut value = 0.0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_floating_point_32bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::F32(value),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::F64 => {
+                let mut value = 0.0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_floating_point_64bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::F64(value),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::DateTime => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_filetime(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::DateTime(value),
+                    _ => Self::Null(()),
+                }
+            }
+            c @ (ColumnVariant::Binary | ColumnVariant::LargeBinary) => {
+                let mut size = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_binary_data_size(column_handle, entry, &mut size, err); result == -1 })?;
+                match result {
+                    1 => {
+                        let mut data = vec![0; size as _];
+                        let mut result = 0;
+                        with_error_if(|err| unsafe { result = libesedb_record_get_value_binary_data(
+                            column_handle,
+                            entry,
+                            data.as_mut_ptr(),
+                            size,
+                            err,
+                        ); result == -1 })?;
+                        match result {
+                            1 => match c {
+                                ColumnVariant::Binary => Self::Binary(data),
+                                ColumnVariant::LargeBinary => Self::LargeBinary(data),
+                                _ => unreachable!(),
+                            },
+                            _ => Self::Null(()),
+                        }
+                    }
+                    _ => Self::Null(()),
+                }
+            }
+            c @ (ColumnVariant::Text | ColumnVariant::LargeText) => {
+                let mut size = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_utf8_string_size(column_handle, entry, &mut size, err); result == -1 })?;
+                match result {
+                    1 => {
+                        let mut data = vec![0; size as _];
+                        let mut result = 0;
+                        with_error_if(|err| unsafe { result = libesedb_record_get_value_utf8_string(
+                            column_handle,
+                            entry,
+                            data.as_mut_ptr(),
+                            size,
+                            err,
+                        ); result == -1 })?;
+                        match result {
+                            1 => {
+                                data.pop(); // remove null byte
+                                let text = String::from_utf8_lossy(&data).into();
+                                match c {
+                                    ColumnVariant::Text => Self::Text(text),
+                                    ColumnVariant::LargeText => Self::LargeText(text),
+                                    _ => unreachable!(),
+                                }
+                            }
+                            _ => Self::Null(()),
+                        }
+                    }
+                    _ => Self::Null(()),
+                }
+            }
+            c @ (ColumnVariant::SuperLarge | ColumnVariant::Guid) => {
+                let mut size = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_data_size(column_handle, entry, &mut size, err); result == -1 })?;
+                let mut data = vec![0; size as _];
+                with_error_if(|err| unsafe { libesedb_record_get_value_data(
+                    column_handle,
+                    entry,
+                    data.as_mut_ptr(),
+                    size,
+                    err,
+                ) == -1 })?;
+                match c {
+                    ColumnVariant::SuperLarge => Self::SuperLarge(data),
+                    ColumnVariant::Guid => Self::Guid(data),
+                    _ => unreachable!(),
+                }
+            }
+            ColumnVariant::U32 => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_32bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::U32(value),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::I64 => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_64bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::I64(value as i64),
+                    _ => Self::Null(()),
+                }
+            }
+            ColumnVariant::U16 => {
+                let mut value = 0;
+                let mut result = 0;
+                with_error_if(|err| unsafe { result = libesedb_record_get_value_16bit(column_handle, entry, &mut value, err); result == -1 })?;
+                match result {
+                    1 => Self::U16(value),
+                    _ => Self::Null(()),
+                }
+            }
+        })
     }
 }
 
@@ -246,209 +430,30 @@ impl ToString for Value {
     }
 }
 
-impl LoadEntry for Value {
-    type Handle = libesedb_record_t;
+const FILETIME_EPOCH: OffsetDateTime = datetime!(1601-01-01 00:00:00 +0);
+const OLETIME_EPOCH: OffsetDateTime = datetime!(1899-12-30 00:00:00 +0);
 
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Value> {
-        with_error(|err| unsafe {
-            let mut raw_column_type = 0;
-            // Short circuit return if result != 1
-            (libesedb_record_get_column_type(handle, entry, &mut raw_column_type, err) == 1)
-                .then(|| ())?;
-            let column_type: ColumnVariant = raw_column_type.into();
-            Some(match column_type {
-                ColumnVariant::Null => Self::Null(()),
-                ColumnVariant::Bool => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_boolean(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::Bool(value != 0),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::U8 => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_8bit(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::U8(value),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::I16 => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_16bit(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::I16(value as i16),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::I32 => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_32bit(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::I32(value as i32),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::Currency => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_64bit(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::Currency(value as i64),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::F32 => {
-                    let mut value = 0.0;
-                    let result = libesedb_record_get_value_floating_point_32bit(
-                        handle, entry, &mut value, err,
-                    );
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::F32(value),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::F64 => {
-                    let mut value = 0.0;
-                    let result = libesedb_record_get_value_floating_point_64bit(
-                        handle, entry, &mut value, err,
-                    );
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::F64(value),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::DateTime => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_filetime(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::DateTime(value),
-                        _ => return None,
-                    }
-                }
-                c @ (ColumnVariant::Binary | ColumnVariant::LargeBinary) => {
-                    let mut size = 0;
-                    let result =
-                        libesedb_record_get_value_binary_data_size(handle, entry, &mut size, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => {
-                            let mut data = vec![0; size as _];
-                            let result = libesedb_record_get_value_binary_data(
-                                handle,
-                                entry,
-                                data.as_mut_ptr(),
-                                size,
-                                err,
-                            );
-                            match result {
-                                0 => Self::Null(()),
-                                1 => match c {
-                                    ColumnVariant::Binary => Self::Binary(data),
-                                    ColumnVariant::LargeBinary => Self::LargeBinary(data),
-                                    _ => unreachable!(),
-                                },
-                                _ => return None,
-                            }
-                        }
-                        _ => return None,
-                    }
-                }
-                c @ (ColumnVariant::Text | ColumnVariant::LargeText) => {
-                    let mut size = 0;
-                    let result =
-                        libesedb_record_get_value_utf8_string_size(handle, entry, &mut size, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => {
-                            let mut data = vec![0; size as _];
-                            let result = libesedb_record_get_value_utf8_string(
-                                handle,
-                                entry,
-                                data.as_mut_ptr(),
-                                size,
-                                err,
-                            );
-                            match result {
-                                0 => Self::Null(()),
-                                1 => {
-                                    data.pop(); // remove null byte
-                                    let text = String::from_utf8_lossy(&data).into();
-                                    match c {
-                                        ColumnVariant::Text => Self::Text(text),
-                                        ColumnVariant::LargeText => Self::LargeText(text),
-                                        _ => unreachable!(),
-                                    }
-                                }
-                                _ => return None,
-                            }
-                        }
-                        _ => return None,
-                    }
-                }
-                c @ (ColumnVariant::SuperLarge | ColumnVariant::Guid) => {
-                    let mut size = 0;
-                    let result = libesedb_record_get_value_data_size(handle, entry, &mut size, err);
-                    match result {
-                        1 => {
-                            let mut data = vec![0; size as _];
-                            let result = libesedb_record_get_value_data(
-                                handle,
-                                entry,
-                                data.as_mut_ptr(),
-                                size,
-                                err,
-                            );
-                            match result {
-                                1 => match c {
-                                    ColumnVariant::SuperLarge => Self::SuperLarge(data),
-                                    ColumnVariant::Guid => Self::Guid(data),
-                                    _ => unreachable!(),
-                                },
-                                _ => return None,
-                            }
-                        }
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::U32 => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_32bit(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::U32(value),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::I64 => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_64bit(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::I64(value as i64),
-                        _ => return None,
-                    }
-                }
-                ColumnVariant::U16 => {
-                    let mut value = 0;
-                    let result = libesedb_record_get_value_16bit(handle, entry, &mut value, err);
-                    match result {
-                        0 => Self::Null(()),
-                        1 => Self::U16(value),
-                        _ => return None,
-                    }
-                }
-            })
-        })
-    }
+pub fn systemtime_from_filetime(t: u64) -> SystemTime {
+    FILETIME_EPOCH.saturating_add(Duration::new(
+        (t / 10000000) as _,
+        (t % 10000000) as _,
+    )).into()
+}
+
+pub fn filetime_from_systemtime(t: SystemTime) -> u64 {
+    ((OffsetDateTime::from(t) - FILETIME_EPOCH).whole_nanoseconds() / 100)
+    .max(0)
+    .min(u64::MAX as _) as _
+}
+
+pub fn systemtime_from_oletime(t: f64) -> SystemTime {
+    OLETIME_EPOCH.saturating_add(NumericalDuration::days(t)).into()
+}
+
+pub fn oletime_from_systemtime(t: SystemTime) -> f64 {
+    let diff = t - OLETIME_EPOCH;
+    // only use seconds mod-within a day - higher accuracy with less division on floats
+    diff.whole_days() as f64 + diff.as_seconds_f64() % (60.0 * 60.0 * 24.0)
 }
 
 #[cfg(test)]
@@ -463,5 +468,37 @@ mod tests {
         assert_eq!(Value::DateTime(116444736000000000).to_filetime().unwrap(), date);
         assert_eq!(42, Value::U8(42));
         assert_eq!(Value::U8(42), 42u8);
+    }
+
+    #[test]
+    fn test_filetime_from_systemtime() {
+        assert_eq!(
+            filetime_from_systemtime(SystemTime::UNIX_EPOCH),
+            116444736000000000,
+        );
+    }
+
+    #[test]
+    fn test_systemtime_from_filetime() {
+        assert_eq!(
+            systemtime_from_filetime(116444736000000000),
+            SystemTime::UNIX_EPOCH
+        );
+    }
+
+    #[test]
+    fn test_oletime_from_systemtime() {
+        assert_eq!(
+            oletime_from_systemtime(SystemTime::UNIX_EPOCH),
+            25569.0
+        );
+    }
+
+    #[test]
+    fn test_systemtime_from_oletime() {
+        assert_eq!(
+            systemtime_from_oletime(25569.0),
+            SystemTime::UNIX_EPOCH
+        );
     }
 }

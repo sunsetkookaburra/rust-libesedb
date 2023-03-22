@@ -23,9 +23,9 @@ use std::io;
 use std::path::Path;
 use std::ptr::null_mut;
 
-use crate::error::with_error;
+use crate::error::with_error_if;
 use crate::Table;
-use crate::iter::{IterEntries, LoadEntry};
+// use crate::iter::LoadEntry;
 
 const LIBESEDB_OPEN_READ: LIBESEDB_ACCESS_FLAGS = LIBESEDB_ACCESS_FLAGS_LIBESEDB_ACCESS_FLAG_READ;
 
@@ -49,15 +49,13 @@ impl EseDb {
     /// ```
     pub fn open<P: AsRef<Path>>(filename: P) -> io::Result<Self> {
         let filename = CString::new(&*filename.as_ref().to_string_lossy())?;
-        with_error(|err| unsafe {
-            let mut ptr = null_mut();
-            (libesedb_file_initialize(&mut ptr, err) == 1).then(||())?;
-            if libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) != 1 {
-                libesedb_file_free(&mut ptr, null_mut());
-                return None
-            }
-            Some(Self { ptr })
-        })
+        let mut ptr = null_mut();
+        with_error_if(|err| unsafe { libesedb_file_initialize(&mut ptr, err) == -1 })?;
+        if let Err(e) = with_error_if(|err| unsafe { libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) == -1 }) {
+            unsafe { libesedb_file_free(&mut ptr, null_mut()); }
+            return Err(e)
+        }
+        Ok(Self { ptr })
     }
 
     /// Return underlying pointer for use with `libesedb-sys`.
@@ -67,7 +65,7 @@ impl EseDb {
 
     /// Load a specific table by entry number.
     /// Returned [`Table`] is bound to the lifetime of the database.
-    pub fn table<'a>(&'a self, entry: i32) -> io::Result<Table<'a>> {
+    pub fn table(&self, entry: i32) -> io::Result<Table> {
         Table::load(self.ptr, entry)
     }
 
@@ -79,11 +77,9 @@ impl EseDb {
 
     /// Total number of tables in ESE database.
     pub fn count_tables(&self) -> io::Result<i32> {
-        with_error(|err| unsafe {
-            let mut n = 0;
-            (libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == 1)
-            .then(|| n)
-        })
+        let mut n = 0;
+        with_error_if(|err| unsafe { libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == -1 })?;
+        Ok(n)
     }
 
     /// Create an iterator over all the tables in the database.
@@ -104,14 +100,17 @@ impl EseDb {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_tables<'a>(&'a self) -> io::Result<IterEntries<'a, Table<'a>>> {
-        Ok(IterEntries::new(self.ptr, self.count_tables()?))
+    pub fn iter_tables(&self) -> io::Result<impl Iterator<Item = io::Result<Table>>> {
+        Ok((0..self.count_tables()?).map(|i| Table::load(self.ptr, i)))
     }
 }
 
 impl Drop for EseDb {
     fn drop(&mut self) {
         unsafe {
+            // Safety:
+            //  (via libesedb_io_handle_free) only fails if &mut self.ptr is null;
+            //  thus never fails because self.ptr is valid memory
             libesedb_file_free(&mut self.ptr, null_mut());
         }
     }

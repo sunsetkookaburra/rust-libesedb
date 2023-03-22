@@ -23,8 +23,8 @@ use std::marker::PhantomData;
 use std::ptr::null_mut;
 
 use crate::column::Column;
-use crate::error::with_error;
-use crate::iter::{IterEntries, LoadEntry};
+use crate::error::with_error_if;
+// use crate::iter::{IterEntries, LoadEntry};
 use crate::record::Record;
 
 /// Instance of a ESE database table in a currently open [`crate::EseDb`].
@@ -35,41 +35,33 @@ pub struct Table<'a> {
 
 impl Table<'_> {
     pub(crate) fn from_name(handle: *mut libesedb_file_t, name: &str) -> io::Result<Self> {
-        with_error(|err| unsafe {
-            let mut ptr = null_mut();
-            (libesedb_file_get_table_by_utf8_name(handle, name.as_ptr(), name.len() as _, &mut ptr, err) == 1).then(||())?;
-            Some(Self { ptr, _marker: PhantomData })
-        })
+        let mut ptr = null_mut();
+        with_error_if(|err| unsafe { libesedb_file_get_table_by_utf8_name(handle, name.as_ptr(), name.len() as _, &mut ptr, err) == -1 })?;
+        Ok(Self { ptr, _marker: PhantomData })
     }
 
     /// Gets the name of the table.
     pub fn name(&self) -> io::Result<String> {
-        with_error(|err| unsafe {
-            let mut size = 0;
-            (libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == 1).then(||())?;
-            let mut name = vec![0; size as _];
-            (libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1).then(||())?;
-            name.pop(); // remove null byte
-            Some(name)
-        }).and_then(|name| {
-            String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-        })
+        let mut size = 0;
+        with_error_if(|err| unsafe { libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == -1 })?;
+        let mut name = Vec::with_capacity(size as _);
+        with_error_if(|err| unsafe { libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == -1 })?;
+        name.pop();
+        String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 
     /// Total number of columns in table.
     pub fn count_columns(&self) -> io::Result<i32> {
-        with_error(|err| unsafe {
-            let mut n = 0;
-            (libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == 1).then(|| n)
-        })
+        let mut n = 0;
+        with_error_if(|err| unsafe { libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == -1 })?;
+        Ok(n)
     }
 
     /// Total number of records (rows) in table.
     pub fn count_records(&self) -> io::Result<i32> {
-        with_error(|err| unsafe {
-            let mut n = 0;
-            (libesedb_table_get_number_of_records(self.ptr, &mut n, err) == 1).then(|| n)
-        })
+        let mut n = 0;
+        with_error_if(|err| unsafe { libesedb_table_get_number_of_records(self.ptr, &mut n, err) == -1 })?;
+        Ok(n)
     }
 
     /// Load a specific column by entry number.
@@ -102,8 +94,8 @@ impl Table<'_> {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_columns(&self) -> io::Result<IterEntries<'_, Column>> {
-        Ok(IterEntries::new(self.ptr, self.count_columns()?))
+    pub fn iter_columns(&self) -> io::Result<impl Iterator<Item = io::Result<Column>>> {
+        Ok((0..self.count_columns()?).map(|i| Column::load(self.ptr, i)))
     }
 
     /// Create an iterator over all the records (rows) in the table.
@@ -127,12 +119,18 @@ impl Table<'_> {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_records(&self) -> io::Result<IterEntries<'_, Record>> {
-        Ok(IterEntries::new(self.ptr, self.count_records()?))
+    pub fn iter_records(&self) -> io::Result<impl Iterator<Item = io::Result<Record>>> {
+        Ok((0..self.count_records()?).map(|i| Record::load(self.ptr, i)))
     }
 
     /// When done reading, call this to free resources the table is using in memory.
     pub fn close(self) {}
+
+    pub(crate) fn load<'a>(db_handle: *mut libesedb_file_t, entry: i32) -> io::Result<Table<'a>> {
+        let mut ptr = null_mut();
+        with_error_if(|err| unsafe { libesedb_file_get_table(db_handle, entry, &mut ptr, err) == -1 })?;
+        Ok(Table::<'a> { ptr, _marker: PhantomData })
+    }
 }
 
 impl Drop for Table<'_> {
@@ -140,17 +138,5 @@ impl Drop for Table<'_> {
         unsafe {
             libesedb_table_free(&mut self.ptr, null_mut());
         }
-    }
-}
-
-impl LoadEntry for Table<'_> {
-    type Handle = libesedb_file_t;
-
-    fn load(handle: *mut Self::Handle, entry: i32) -> io::Result<Self> {
-        with_error(|err| {
-            let mut ptr = null_mut();
-            (unsafe { libesedb_file_get_table(handle, entry, &mut ptr, err) } == 1)
-            .then(|| Self { ptr, _marker: PhantomData })
-        })
     }
 }
