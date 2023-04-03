@@ -2,9 +2,9 @@
 
 [![Repository](https://img.shields.io/static/v1?label=GitHub&message=Repository&color=9f7be1&logo=github)](https://github.com/sunsetkookaburra/rust-libesedb)
 [![Upstream](https://img.shields.io/static/v1?label=GitHub&message=Upstream&color=9f7be1&logo=github)](https://github.com/libyal/libesedb)
-[![Crate Page](https://img.shields.io/crates/v/libesedb?logo=rust)](https://crates.io/crates/libesedb-sys)
-[![Documentation](https://img.shields.io/docsrs/libesedb?logo=rust)](https://docs.rs/libesedb-sys)
-[![License](https://img.shields.io/crates/l/libesedb)](https://github.com/sunsetkookaburra/rust-libesedb/blob/main/COPYING.LESSER)
+[![Crate Page](https://img.shields.io/crates/v/libesedb-sys?logo=rust)](https://crates.io/crates/libesedb-sys)
+[![Documentation](https://img.shields.io/docsrs/libesedb-sys?logo=rust)](https://docs.rs/libesedb-sys)
+[![License](https://img.shields.io/crates/l/libesedb-sys)](https://github.com/sunsetkookaburra/rust-libesedb/blob/main/COPYING.LESSER)
 
 Rust `-sys` bindings to [`libyal/libesedb`](https://github.com/libyal/libesedb).
 
