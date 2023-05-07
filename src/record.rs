@@ -22,7 +22,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::error::with_error_if;
+use crate::error::assert_or_error;
 // use crate::iter::{LoadEntry, IterEntries};
 use crate::value::Value;
 
@@ -42,8 +42,8 @@ impl Record<'_> {
     /// Returns number of values (columns/fields) in the record.
     pub fn count_values(&self) -> io::Result<i32> {
         let mut n = 0;
-        with_error_if(|err| unsafe {
-            libesedb_record_get_number_of_values(self.ptr, &mut n, err) == -1
+        assert_or_error(|err| unsafe {
+            libesedb_record_get_number_of_values(self.ptr, &mut n, err) == 1
         })?;
         Ok(n)
     }
@@ -79,8 +79,8 @@ impl Record<'_> {
         entry: i32,
     ) -> io::Result<Record<'a>> {
         let mut ptr = null_mut();
-        with_error_if(|err| unsafe {
-            libesedb_table_get_record(table_handle, entry, &mut ptr, err) == -1
+        assert_or_error(|err| unsafe {
+            libesedb_table_get_record(table_handle, entry, &mut ptr, err) == 1
         })?;
         Ok(Record::<'a> {
             ptr,

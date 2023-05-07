@@ -23,7 +23,7 @@ use std::io;
 use std::path::Path;
 use std::ptr::null_mut;
 
-use crate::error::with_error_if;
+use crate::error::assert_or_error;
 use crate::Table;
 // use crate::iter::LoadEntry;
 
@@ -50,9 +50,9 @@ impl EseDb {
     pub fn open<P: AsRef<Path>>(filename: P) -> io::Result<Self> {
         let filename = CString::new(&*filename.as_ref().to_string_lossy())?;
         let mut ptr = null_mut();
-        with_error_if(|err| unsafe { libesedb_file_initialize(&mut ptr, err) == -1 })?;
-        if let Err(e) = with_error_if(|err| unsafe {
-            libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) == -1
+        assert_or_error(|err| unsafe { libesedb_file_initialize(&mut ptr, err) == 1 })?;
+        if let Err(e) = assert_or_error(|err| unsafe {
+            libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) == 1
         }) {
             unsafe {
                 libesedb_file_free(&mut ptr, null_mut());
@@ -82,8 +82,8 @@ impl EseDb {
     /// Total number of tables in ESE database.
     pub fn count_tables(&self) -> io::Result<i32> {
         let mut n = 0;
-        with_error_if(|err| unsafe {
-            libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == -1
+        assert_or_error(|err| unsafe {
+            libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == 1
         })?;
         Ok(n)
     }

@@ -1,3 +1,4 @@
 target/
 Cargo.lock
 tests/CacheStorage.edb
+tests/Catalog1.edb

@@ -22,7 +22,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::error::with_error_if;
+use crate::error::assert_or_error;
 use crate::Value;
 
 /// Instance of a ESE database column in a currently open [`crate::Table`].
@@ -35,12 +35,12 @@ impl Column<'_> {
     /// Gets the name of the column.
     pub fn name(&self) -> io::Result<String> {
         let mut size = 0;
-        with_error_if(|err| unsafe {
-            libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == -1
+        assert_or_error(|err| unsafe {
+            libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == 1
         })?;
         let mut name = Vec::with_capacity(size as _);
-        with_error_if(|err| unsafe {
-            libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == -1
+        assert_or_error(|err| unsafe {
+            libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1
         })?;
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
@@ -49,8 +49,8 @@ impl Column<'_> {
     /// Gets the entry id of the column.
     pub fn id(&self) -> io::Result<u32> {
         let mut id = 0;
-        with_error_if(|err| unsafe {
-            libesedb_column_get_identifier(self.ptr, &mut id, err) == -1
+        assert_or_error(|err| unsafe {
+            libesedb_column_get_identifier(self.ptr, &mut id, err) == 1
         })?;
         Ok(id)
     }
@@ -58,7 +58,7 @@ impl Column<'_> {
     /// Gets an empty [`Value`] representing the type of the data stored in the column.
     pub fn variant(&self) -> io::Result<Value> {
         let mut typ = 0;
-        with_error_if(|err| unsafe { libesedb_column_get_type(self.ptr, &mut typ, err) == -1 })?;
+        assert_or_error(|err| unsafe { libesedb_column_get_type(self.ptr, &mut typ, err) == 1 })?;
         Ok(Value::from_discriminant(typ as _))
     }
 
@@ -70,8 +70,8 @@ impl Column<'_> {
         entry: i32,
     ) -> io::Result<Column<'a>> {
         let mut ptr = null_mut();
-        with_error_if(|err| unsafe {
-            libesedb_table_get_column(table_handle, entry, &mut ptr, 0, err) == -1
+        assert_or_error(|err| unsafe {
+            libesedb_table_get_column(table_handle, entry, &mut ptr, 0, err) == 1
         })?;
         Ok(Column::<'a> {
             ptr,
