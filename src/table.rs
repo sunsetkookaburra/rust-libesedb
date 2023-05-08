@@ -23,7 +23,7 @@ use std::marker::PhantomData;
 use std::ptr::null_mut;
 
 use crate::column::Column;
-use crate::error::assert_or_error;
+use crate::error::{ese_assert, ese_assert_cfn};
 // use crate::iter::{IterEntries, LoadEntry};
 use crate::record::Record;
 
@@ -36,15 +36,18 @@ pub struct Table<'a> {
 impl Table<'_> {
     pub(crate) fn from_name(handle: *mut libesedb_file_t, name: &str) -> io::Result<Self> {
         let mut ptr = null_mut();
-        assert_or_error(|err| unsafe {
-            libesedb_file_get_table_by_utf8_name(
-                handle,
-                name.as_ptr(),
-                name.len() as _,
-                &mut ptr,
-                err,
-            ) == 1
-        })?;
+        ese_assert(
+            |err| unsafe {
+                libesedb_file_get_table_by_utf8_name(
+                    handle,
+                    name.as_ptr(),
+                    name.len() as _,
+                    &mut ptr,
+                    err,
+                ) == 1
+            },
+            format_args!("Can't find table '{name}'"),
+        )?;
         Ok(Self {
             ptr,
             _marker: PhantomData,
@@ -54,13 +57,17 @@ impl Table<'_> {
     /// Gets the name of the table.
     pub fn name(&self) -> io::Result<String> {
         let mut size = 0;
-        assert_or_error(|err| unsafe {
-            libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_table_get_utf8_name_size(self.ptr, &mut size, err) == 1 },
+            format_args!("libesedb_table_get_utf8_name_size"),
+        )?;
         let mut name = Vec::with_capacity(size as _);
-        assert_or_error(|err| unsafe {
-            libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe {
+                libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1
+            },
+            format_args!("libesedb_table_get_utf8_name"),
+        )?;
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
@@ -68,18 +75,20 @@ impl Table<'_> {
     /// Total number of columns in table.
     pub fn count_columns(&self) -> io::Result<i32> {
         let mut n = 0;
-        assert_or_error(|err| unsafe {
-            libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_table_get_number_of_columns(self.ptr, &mut n, 0, err) == 1 },
+            format_args!("libesedb_table_get_number_of_columns"),
+        )?;
         Ok(n)
     }
 
     /// Total number of records (rows) in table.
     pub fn count_records(&self) -> io::Result<i32> {
         let mut n = 0;
-        assert_or_error(|err| unsafe {
-            libesedb_table_get_number_of_records(self.ptr, &mut n, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_table_get_number_of_records(self.ptr, &mut n, err) == 1 },
+            format_args!("libesedb_table_get_number_of_records"),
+        )?;
         Ok(n)
     }
 
@@ -147,9 +156,10 @@ impl Table<'_> {
 
     pub(crate) fn load<'a>(db_handle: *mut libesedb_file_t, entry: i32) -> io::Result<Table<'a>> {
         let mut ptr = null_mut();
-        assert_or_error(|err| unsafe {
-            libesedb_file_get_table(db_handle, entry, &mut ptr, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_file_get_table(db_handle, entry, &mut ptr, err) == 1 },
+            format_args!("libesedb_file_get_table"),
+        )?;
         Ok(Table::<'a> {
             ptr,
             _marker: PhantomData,

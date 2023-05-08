@@ -18,7 +18,7 @@
  */
 
 use libesedb_sys::*;
-use std::{io, ptr::null_mut};
+use std::{fmt, io, ptr::null_mut};
 
 fn error_string(error: *mut libesedb_error_t) -> String {
     let mut buf = vec![0u8; 4096];
@@ -46,7 +46,7 @@ fn ese_error(error: *mut *mut libesedb_error_t) -> io::Error {
         io::ErrorKind::Other,
         // error_string(unsafe { *error })
         format!(
-            "{}\n{}",
+            "c-libesedb: {}\n{}",
             error_string(unsafe { *error }),
             error_backtrace_string(unsafe { *error })
         ),
@@ -58,7 +58,28 @@ fn ese_error(error: *mut *mut libesedb_error_t) -> io::Error {
 }
 
 /// Return a Result, Err if `f()` returns `true`.
-pub(crate) fn assert_or_error(f: impl FnOnce(*mut *mut libesedb_error_t) -> bool) -> io::Result<()> {
+pub(crate) fn ese_assert(
+    f: impl FnOnce(*mut *mut libesedb_error_t) -> bool,
+    msg: fmt::Arguments,
+) -> io::Result<()> {
     let mut error: *mut libesedb_error_t = null_mut();
-    f(&mut error).then_some(()).ok_or(ese_error(&mut error))
+    if !f(&mut error) {
+        Err(if error.is_null() {
+            io::Error::new(io::ErrorKind::Other, format!("rust-libesedb: {msg}"))
+        } else {
+            ese_error(&mut error)
+        })
+    } else {
+        Ok(())
+    }
+}
+
+pub(crate) fn ese_assert_cfn(
+    f: impl FnOnce(*mut *mut libesedb_error_t) -> bool,
+    name: fmt::Arguments,
+) -> io::Result<()> {
+    ese_assert(
+        f,
+        format_args!("Unexpected error when calling C function '{name}'"),
+    )
 }

@@ -22,7 +22,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::error::assert_or_error;
+use crate::error::ese_assert_cfn;
 use crate::Value;
 
 /// Instance of a ESE database column in a currently open [`crate::Table`].
@@ -35,13 +35,17 @@ impl Column<'_> {
     /// Gets the name of the column.
     pub fn name(&self) -> io::Result<String> {
         let mut size = 0;
-        assert_or_error(|err| unsafe {
-            libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_column_get_utf8_name_size(self.ptr, &mut size, err) == 1 },
+            format_args!("libesedb_column_get_utf8_name_size"),
+        )?;
         let mut name = Vec::with_capacity(size as _);
-        assert_or_error(|err| unsafe {
-            libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe {
+                libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1
+            },
+            format_args!("libesedb_column_get_utf8_name"),
+        )?;
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
@@ -49,16 +53,20 @@ impl Column<'_> {
     /// Gets the entry id of the column.
     pub fn id(&self) -> io::Result<u32> {
         let mut id = 0;
-        assert_or_error(|err| unsafe {
-            libesedb_column_get_identifier(self.ptr, &mut id, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_column_get_identifier(self.ptr, &mut id, err) == 1 },
+            format_args!("libesedb_column_get_identifier"),
+        )?;
         Ok(id)
     }
 
     /// Gets an empty [`Value`] representing the type of the data stored in the column.
     pub fn variant(&self) -> io::Result<Value> {
         let mut typ = 0;
-        assert_or_error(|err| unsafe { libesedb_column_get_type(self.ptr, &mut typ, err) == 1 })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_column_get_type(self.ptr, &mut typ, err) == 1 },
+            format_args!("libesedb_column_get_type"),
+        )?;
         Ok(Value::from_discriminant(typ as _))
     }
 
@@ -70,9 +78,10 @@ impl Column<'_> {
         entry: i32,
     ) -> io::Result<Column<'a>> {
         let mut ptr = null_mut();
-        assert_or_error(|err| unsafe {
-            libesedb_table_get_column(table_handle, entry, &mut ptr, 0, err) == 1
-        })?;
+        ese_assert_cfn(
+            |err| unsafe { libesedb_table_get_column(table_handle, entry, &mut ptr, 0, err) == 1 },
+            format_args!("libesedb_table_get_column"),
+        )?;
         Ok(Column::<'a> {
             ptr,
             _marker: PhantomData,
