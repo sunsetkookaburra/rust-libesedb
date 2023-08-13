@@ -64,7 +64,13 @@ impl Table<'_> {
         let mut name = Vec::with_capacity(size as _);
         ese_assert_cfn(
             |err| unsafe {
-                libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1
+                let r = libesedb_table_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err);
+                if r == 1 {
+                    name.set_len(size.try_into().unwrap());
+                    true
+                } else {
+                    false
+                }
             },
             format_args!("libesedb_table_get_utf8_name"),
         )?;
