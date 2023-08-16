@@ -42,16 +42,11 @@ impl Column<'_> {
         let mut name = Vec::with_capacity(size as _);
         ese_assert_cfn(
             |err| unsafe {
-                let r = libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err);
-                if r == 1 {
-                    name.set_len(size.try_into().unwrap());
-                    true
-                } else {
-                    false
-                }
+                libesedb_column_get_utf8_name(self.ptr, name.as_mut_ptr(), size, err) == 1
             },
             format_args!("libesedb_column_get_utf8_name"),
         )?;
+        unsafe { name.set_len(size as _) }
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
