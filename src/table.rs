@@ -68,6 +68,7 @@ impl Table<'_> {
             },
             format_args!("libesedb_table_get_utf8_name"),
         )?;
+        unsafe { name.set_len(size as _) }
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
