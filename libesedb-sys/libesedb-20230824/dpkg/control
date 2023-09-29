@@ -1,0 +1,65 @@
+Source: libesedb
+Priority: extra
+Maintainer: Joachim Metz <joachim.metz@gmail.com>
+Build-Depends: debhelper (>= 9), dh-autoreconf, dh-python, pkg-config, python3-dev, python3-setuptools
+Standards-Version: 4.1.4
+Section: libs
+Homepage: https://github.com/libyal/libesedb
+Vcs-Git: https://github.com/libyal/libesedb.git
+
+Package: libesedb
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: libesedb1
+Replaces: libesedb1
+Suggests: libesedb-dbg
+Description: Library to access the Extensible Storage Engine (ESE) Database File (EDB) format
+ libesedb is a library to access the Extensible Storage Engine (ESE) Database File (EDB) format.
+
+Package: libesedb-dbg
+Architecture: any
+Section: debug
+Depends: libesedb (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for libesedb
+ Debugging symbols for libesedb.
+
+Package: libesedb-dev
+Section: libdevel
+Architecture: any
+Depends: libesedb (= ${binary:Version}), ${misc:Depends}
+Description: Header files and libraries for developing applications for libesedb
+ Header files and libraries for developing applications for libesedb.
+
+Package: libesedb-tools
+Section: utils
+Architecture: any
+Depends: libesedb (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Conflicts: libesedb-utils
+Replaces: libesedb-utils
+Description: Several tools for reading Extensible Storage Engine (ESE) Database Files (EDB)
+ Several tools for reading Extensible Storage Engine (ESE) Database Files (EDB).
+
+Package: libesedb-tools-dbg
+Section: debug
+Architecture: any
+Depends: libesedb-tools (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for libesedb-tools
+ Debugging symbols for libesedb-tools.
+
+Package: libesedb-python3
+Section: python
+Architecture: any
+Depends: libesedb (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Conflicts: python3-libesedb
+Replaces: python3-libesedb
+Suggests: libesedb-python3-dbg
+Description: Python 3 bindings for libesedb
+ Python 3 bindings for libesedb.
+
+Package: libesedb-python3-dbg
+Section: debug
+Architecture: any
+Depends: libesedb-python3 (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for libesedb-python3
+ Debugging symbols for libesedb-python3.
+

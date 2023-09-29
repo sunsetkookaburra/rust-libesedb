@@ -17,7 +17,7 @@ Rust `-sys` bindings to [`libyal/libesedb`](https://github.com/libyal/libesedb).
 ## Rebuilding Bindings
 
 ```
-bindgen libesedb-20210424/include/libesedb.h -o src/bindings.rs -- -Ilibesedb-20210424/include -fparse-all-comments
+bindgen libesedb-20230824/include/libesedb.h -o src/bindings.rs -- -Ilibesedb-20230824/include -fparse-all-comments
 ```
 
 ## Configuring Max Leaf-Pages
@@ -36,6 +36,20 @@ In your Cargo.toml:
 [env]
 LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES = "32 * 1024"
 ```
+
+## Updating Bundled libesedb
+
+* Download/Clone head of the `main` branch
+  * `git clone --branch main --depth 1 https://github.com/libyal/libesedb`
+  * <https://github.com/libyal/libesedb/archive/refs/heads/main.zip>
+* Follow Build Instructions <https://github.com/libyal/libesedb/wiki/Building>
+  * Run the following
+    * `./synclibs.sh`
+    * `./autogen.sh`
+    * `./configure`
+    * `make dist`
+  * Output should include a `.tar.gz` containing the source distribution version
+  * Note: I used Cygwin on Windows, you will need the packages mentioned here: <https://github.com/libyal/libesedb/wiki/Building#cygwin>
 
 ## Authors
 

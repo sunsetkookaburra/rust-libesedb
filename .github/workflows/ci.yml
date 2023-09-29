@@ -15,6 +15,7 @@ jobs:
         include:
           - os: ubuntu-latest
           - os: windows-latest
+          - os: macos-latest
     steps:
       - name: Clone Repository
         uses: actions/checkout@v3

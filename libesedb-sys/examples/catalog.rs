@@ -24,7 +24,8 @@ fn main() {
             exit(1);
         }
 
-        let filename = CString::new(env::args().nth(1).unwrap_or("Windows.edb".to_string())).unwrap();
+        let filename =
+            CString::new(env::args().nth(1).unwrap_or("Windows.edb".to_string())).unwrap();
 
         if libesedb_file_open(file, filename.as_ptr() as _, LIBESEDB_OPEN_READ, &mut error) != 1 {
             eprintln!("Unable to open file.");
@@ -59,12 +60,24 @@ fn main() {
         println!("The table name (including null byte) takes up {table_name_size} bytes.");
 
         let mut table_name = vec![0; table_name_size.try_into().unwrap()];
-        if libesedb_table_get_utf8_name(table, table_name.as_mut_ptr(), table_name.len().try_into().unwrap(), &mut error) != 1 {
+        if libesedb_table_get_utf8_name(
+            table,
+            table_name.as_mut_ptr(),
+            table_name.len().try_into().unwrap(),
+            &mut error,
+        ) != 1
+        {
             eprintln!("Unable to get table name.");
             libesedb_error_free(&mut error);
         }
 
-        println!("Table Name: {}", CString::from_vec_with_nul(table_name).unwrap().to_str().unwrap());
+        println!(
+            "Table Name: {}",
+            CString::from_vec_with_nul(table_name)
+                .unwrap()
+                .to_str()
+                .unwrap()
+        );
 
         if libesedb_file_close(file, &mut error) != 0 {
             eprintln!("Unable to close file.");

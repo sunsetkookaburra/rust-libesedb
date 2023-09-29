@@ -27,10 +27,6 @@ fn main() {
 
 A `tests/CacheStorage.edb` can be obtained from from `AppData\Local\Packages\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\AppData\CacheStorage`
 
-## Project TODO
-
-* [ ] Document build.rs (modifying for leaf pages, etc)
-
 ## License and Acknowledgement
 
 This project is made available under the [LGPL-3.0-or-later](./COPYING.LESSER).
