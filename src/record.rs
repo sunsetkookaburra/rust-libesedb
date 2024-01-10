@@ -1,7 +1,7 @@
 /*
  * A safe Rust API to libesedb
  *
- * Copyright (C) 2022-2023, Oliver Lenehan ~sunsetkookaburra
+ * Copyright (C) 2022-2024, Oliver Lenehan ~sunsetkookaburra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -22,7 +22,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::error::ese_assert_cfn;
+use crate::error::ese_result;
 // use crate::iter::{LoadEntry, IterEntries};
 use crate::value::Value;
 
@@ -42,10 +42,7 @@ impl Record<'_> {
     /// Returns number of values (columns/fields) in the record.
     pub fn count_values(&self) -> io::Result<i32> {
         let mut n = 0;
-        ese_assert_cfn(
-            |err| unsafe { libesedb_record_get_number_of_values(self.ptr, &mut n, err) == 1 },
-            format_args!("libesedb_record_get_number_of_values"),
-        )?;
+        ese_result!(libesedb_record_get_number_of_values, self.ptr, &mut n)?;
         Ok(n)
     }
 
@@ -80,10 +77,7 @@ impl Record<'_> {
         entry: i32,
     ) -> io::Result<Record<'a>> {
         let mut ptr = null_mut();
-        ese_assert_cfn(
-            |err| unsafe { libesedb_table_get_record(table_handle, entry, &mut ptr, err) == 1 },
-            format_args!("libesedb_table_get_record"),
-        )?;
+        ese_result!(libesedb_table_get_record, table_handle, entry, &mut ptr)?;
         Ok(Record::<'a> {
             ptr,
             _marker: PhantomData,

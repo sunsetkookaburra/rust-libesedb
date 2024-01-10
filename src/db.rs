@@ -1,7 +1,7 @@
 /*
  * A safe Rust API to libesedb
  *
- * Copyright (C) 2022-2023, Oliver Lenehan ~sunsetkookaburra
+ * Copyright (C) 2022-2024, Oliver Lenehan ~sunsetkookaburra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -23,7 +23,7 @@ use std::io;
 use std::path::Path;
 use std::ptr::null_mut;
 
-use crate::error::ese_assert_cfn;
+use crate::error::ese_result;
 use crate::Table;
 // use crate::iter::LoadEntry;
 
@@ -50,16 +50,8 @@ impl EseDb {
     pub fn open<P: AsRef<Path>>(filename: P) -> io::Result<Self> {
         let filename = CString::new(&*filename.as_ref().to_string_lossy())?;
         let mut ptr = null_mut();
-        ese_assert_cfn(
-            |err| unsafe { libesedb_file_initialize(&mut ptr, err) == 1 },
-            format_args!("libesedb_file_initialize"),
-        )?;
-        if let Err(e) = ese_assert_cfn(
-            |err| unsafe {
-                libesedb_file_open(ptr, filename.as_ptr(), LIBESEDB_OPEN_READ, err) == 1
-            },
-            format_args!("libesedb_file_open"),
-        ) {
+        ese_result!(libesedb_file_initialize, &mut ptr)?;
+        if let Err(e) = ese_result!(libesedb_file_open, ptr, filename.as_ptr(), LIBESEDB_OPEN_READ) {
             unsafe {
                 libesedb_file_free(&mut ptr, null_mut());
             }
@@ -88,10 +80,7 @@ impl EseDb {
     /// Total number of tables in ESE database.
     pub fn count_tables(&self) -> io::Result<i32> {
         let mut n = 0;
-        ese_assert_cfn(
-            |err| unsafe { libesedb_file_get_number_of_tables(self.ptr, &mut n, err) == 1 },
-            format_args!("libesedb_file_get_number_of_tables"),
-        )?;
+        ese_result!(libesedb_file_get_number_of_tables, self.ptr, &mut n)?;
         Ok(n)
     }
 
