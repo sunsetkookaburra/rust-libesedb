@@ -25,7 +25,9 @@ fn main() {
 }
 ```
 
-A `tests/CacheStorage.edb` can be obtained from from `AppData\Local\Packages\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\AppData\CacheStorage`
+## Test Data
+
+* <https://github.com/janstarke/ntdsextract2/blob/10-include-deleted-entries-in-timeline/tests/data/ntds_plain.dit>
 
 ## Future Changes
 

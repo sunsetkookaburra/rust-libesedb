@@ -23,6 +23,17 @@
 //! }
 //! ```
 //!
+//! ## Test Data
+//!
+//! * <https://github.com/janstarke/ntdsextract2/blob/10-include-deleted-entries-in-timeline/tests/data/ntds_plain.dit>
+//!
+//! ## Future Changes
+//!
+//! * `v0.3.0`
+//!     * Remove `close()` methods in favour of `drop!()`
+//!     * Lazy-load `Value`s (store some sort of record reference, similar to current LongValue and MultiValue internally)
+//!     * `Value`s come in either `FlatValue`, `LongValue`, `MultiValue` variants, with a defined `ValueType`
+//!
 //! ## License and Acknowledgement
 //!
 //! This project is made available under the [LGPL-3.0-or-later](./COPYING.LESSER).
