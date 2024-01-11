@@ -36,9 +36,21 @@ pub struct Table<'a> {
 impl Table<'_> {
     pub(crate) fn from_name(handle: *mut libesedb_file_t, name: &str) -> io::Result<Self> {
         let mut ptr = null_mut();
-        match ese_result!(libesedb_file_get_table_by_utf8_name, handle, name.as_ptr(), name.len() as _, &mut ptr)? {
-            1 => Ok(Self { ptr, _marker: PhantomData }),
-            _ => Err(io::Error::new(io::ErrorKind::Other, format!("Can't find table '{name}'"))),
+        match ese_result!(
+            libesedb_file_get_table_by_utf8_name,
+            handle,
+            name.as_ptr(),
+            name.len() as _,
+            &mut ptr
+        )? {
+            1 => Ok(Self {
+                ptr,
+                _marker: PhantomData,
+            }),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Can't find table '{name}'"),
+            )),
         }
     }
 
@@ -47,7 +59,12 @@ impl Table<'_> {
         let mut size = 0;
         ese_result!(libesedb_table_get_utf8_name_size, self.ptr, &mut size)?;
         let mut name = Vec::with_capacity(size as _);
-        ese_result!(libesedb_table_get_utf8_name, self.ptr, name.as_mut_ptr(), size)?;
+        ese_result!(
+            libesedb_table_get_utf8_name,
+            self.ptr,
+            name.as_mut_ptr(),
+            size
+        )?;
         unsafe { name.set_len(size as _) }
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
@@ -126,6 +143,7 @@ impl Table<'_> {
         Ok((0..self.count_records()?).map(|i| Record::load(self.ptr, i)))
     }
 
+    #[deprecated]
     /// When done reading, call this to free resources the table is using in memory.
     pub fn close(self) {}
 

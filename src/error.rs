@@ -57,7 +57,6 @@ pub(crate) fn ese_error(error: *mut *mut libesedb_error_t) -> io::Error {
     err
 }
 
-
 macro_rules! ese_result {
     ($fn_name:ident, $($args:expr),*) => ({
         let mut error: *mut libesedb_error_t = ::std::ptr::null_mut();

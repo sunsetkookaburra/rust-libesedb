@@ -37,7 +37,12 @@ impl Column<'_> {
         let mut size = 0;
         ese_result!(libesedb_column_get_utf8_name_size, self.ptr, &mut size)?;
         let mut name = Vec::with_capacity(size as _);
-        ese_result!(libesedb_column_get_utf8_name, self.ptr, name.as_mut_ptr(), size)?;
+        ese_result!(
+            libesedb_column_get_utf8_name,
+            self.ptr,
+            name.as_mut_ptr(),
+            size
+        )?;
         unsafe { name.set_len(size as _) }
         name.pop();
         String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
@@ -57,6 +62,7 @@ impl Column<'_> {
         Ok(Value::from_discriminant(typ as _))
     }
 
+    #[deprecated]
     /// When done reading, call this to free resources the column is using in memory.
     pub fn close(self) {}
 

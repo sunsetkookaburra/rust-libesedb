@@ -34,12 +34,16 @@
 mod column;
 mod db;
 mod error;
+mod long_value;
+mod multi_value;
 mod record;
 mod table;
 mod value;
 
 pub use column::*;
 pub use db::*;
+pub use long_value::*;
+pub use multi_value::*;
 pub use record::*;
 pub use table::*;
 pub use value::*;

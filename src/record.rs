@@ -23,6 +23,7 @@ use std::marker::PhantomData;
 use std::ptr::null_mut;
 
 use crate::error::ese_result;
+use crate::{LongValue, MultiValue};
 // use crate::iter::{LoadEntry, IterEntries};
 use crate::value::Value;
 
@@ -37,6 +38,22 @@ impl Record<'_> {
     /// Returned [`Value`] is bound to the lifetime of the database record.
     pub fn value(&self, entry: i32) -> io::Result<Value> {
         Value::load(self.ptr, entry)
+    }
+
+    pub fn is_long(&self, entry: i32) -> io::Result<bool> {
+        Ok(1 == ese_result!(libesedb_record_is_long_value, self.ptr, entry)?)
+    }
+
+    pub fn is_multi(&self, entry: i32) -> io::Result<bool> {
+        Ok(1 == ese_result!(libesedb_record_is_multi_value, self.ptr, entry)?)
+    }
+
+    pub fn long<'a>(&self, entry: i32) -> io::Result<LongValue<'a>> {
+        LongValue::load(self.ptr, entry)
+    }
+
+    pub fn multi<'a>(&self, entry: i32) -> io::Result<MultiValue<'a>> {
+        MultiValue::load(self.ptr, entry)
     }
 
     /// Returns number of values (columns/fields) in the record.
@@ -69,6 +86,7 @@ impl Record<'_> {
         Ok((0..self.count_values()?).map(|i| Value::load(self.ptr, i)))
     }
 
+    #[deprecated]
     /// When done reading, call this to free resources the record is using in memory.
     pub fn close(self) {}
 

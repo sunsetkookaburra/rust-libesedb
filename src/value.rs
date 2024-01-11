@@ -45,7 +45,9 @@ macro_rules! column_variants {
             $(
                 $(#[$attr $($args)*])*
                 $name($t)
-            ),*
+            ),*,
+            Long,
+            Multi
         }
 
         impl Value {
@@ -177,72 +179,137 @@ impl Value {
     }
 
     pub(crate) fn load(record_handle: *mut libesedb_record_t, entry: i32) -> io::Result<Value> {
+        if 1 == ese_result!(libesedb_record_is_long_value, record_handle, entry)? {
+            return Ok(Self::Long);
+        }
+        if 1 == ese_result!(libesedb_record_is_multi_value, record_handle, entry)? {
+            return Ok(Self::Multi);
+        }
         let mut column_type = 0;
-        ese_result!(libesedb_record_get_column_type, record_handle, entry, &mut column_type)?;
+        ese_result!(
+            libesedb_record_get_column_type,
+            record_handle,
+            entry,
+            &mut column_type
+        )?;
+
         Ok(match Self::from_discriminant(column_type as _) {
             Self::Null(_) => Self::Null(()),
+            Self::Long => Self::Long,
+            Self::Multi => Self::Multi,
             Self::Bool(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_boolean, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_boolean,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::Bool(value != 0),
                     _ => Self::Null(()),
                 }
             }
             Self::U8(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_8bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_8bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::U8(value),
                     _ => Self::Null(()),
                 }
             }
             Self::I16(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_16bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_16bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::I16(value as i16),
                     _ => Self::Null(()),
                 }
             }
             Self::I32(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_32bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_32bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::I32(value as i32),
                     _ => Self::Null(()),
                 }
             }
             Self::Currency(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_64bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_64bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::Currency(value as i64),
                     _ => Self::Null(()),
                 }
             }
             Self::F32(_) => {
                 let mut value = 0.0;
-                match ese_result!(libesedb_record_get_value_floating_point_32bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_floating_point_32bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::F32(value),
                     _ => Self::Null(()),
                 }
             }
             Self::F64(_) => {
                 let mut value = 0.0;
-                match ese_result!(libesedb_record_get_value_floating_point_64bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_floating_point_64bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::F64(value),
                     _ => Self::Null(()),
                 }
             }
             Self::DateTime(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_filetime, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_filetime,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::DateTime(value),
                     _ => Self::Null(()),
                 }
             }
             c @ (Self::Binary(_) | Self::LargeBinary(_)) => {
                 let mut size = 0;
-                match ese_result!(libesedb_record_get_value_binary_data_size, record_handle, entry, &mut size)? {
+                match ese_result!(
+                    libesedb_record_get_value_binary_data_size,
+                    record_handle,
+                    entry,
+                    &mut size
+                )? {
                     1 => {
                         let mut data = vec![0; size as _];
-                        match ese_result!(libesedb_record_get_value_binary_data, record_handle, entry, data.as_mut_ptr(), size)? {
+                        match ese_result!(
+                            libesedb_record_get_value_binary_data,
+                            record_handle,
+                            entry,
+                            data.as_mut_ptr(),
+                            size
+                        )? {
                             1 => match c {
                                 Self::Binary(_) => Self::Binary(data),
                                 Self::LargeBinary(_) => Self::LargeBinary(data),
@@ -256,10 +323,21 @@ impl Value {
             }
             c @ (Self::Text(_) | Self::LargeText(_)) => {
                 let mut size = 0;
-                match ese_result!(libesedb_record_get_value_utf8_string_size, record_handle, entry, &mut size)? {
+                match ese_result!(
+                    libesedb_record_get_value_utf8_string_size,
+                    record_handle,
+                    entry,
+                    &mut size
+                )? {
                     1 => {
                         let mut data = vec![0; size as _];
-                        match ese_result!(libesedb_record_get_value_utf8_string, record_handle, entry, data.as_mut_ptr(), size)? {
+                        match ese_result!(
+                            libesedb_record_get_value_utf8_string,
+                            record_handle,
+                            entry,
+                            data.as_mut_ptr(),
+                            size
+                        )? {
                             1 => {
                                 data.pop(); // remove null byte
                                 let text = String::from_utf8_lossy(&data).into();
@@ -277,9 +355,20 @@ impl Value {
             }
             c @ (Self::SuperLarge(_) | Self::Guid(_)) => {
                 let mut size = 0;
-                ese_result!(libesedb_record_get_value_data_size, record_handle, entry, &mut size)?;
+                ese_result!(
+                    libesedb_record_get_value_data_size,
+                    record_handle,
+                    entry,
+                    &mut size
+                )?;
                 let mut data = vec![0; size as _];
-                ese_result!(libesedb_record_get_value_data, record_handle, entry, data.as_mut_ptr(), size)?;
+                ese_result!(
+                    libesedb_record_get_value_data,
+                    record_handle,
+                    entry,
+                    data.as_mut_ptr(),
+                    size
+                )?;
                 match c {
                     Self::SuperLarge(_) => Self::SuperLarge(data),
                     Self::Guid(_) => Self::Guid(data),
@@ -288,21 +377,36 @@ impl Value {
             }
             Self::U32(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_32bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_32bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::U32(value),
                     _ => Self::Null(()),
                 }
             }
             Self::I64(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_64bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_64bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::I64(value as i64),
                     _ => Self::Null(()),
                 }
             }
             Self::U16(_) => {
                 let mut value = 0;
-                match ese_result!(libesedb_record_get_value_16bit, record_handle, entry, &mut value)? {
+                match ese_result!(
+                    libesedb_record_get_value_16bit,
+                    record_handle,
+                    entry,
+                    &mut value
+                )? {
                     1 => Self::U16(value),
                     _ => Self::Null(()),
                 }
@@ -346,6 +450,8 @@ impl ToString for Value {
                 )
             }
             Value::U16(x) => x.to_string(),
+            Value::Long => "LongValue".to_string(),
+            Value::Multi => "MultiValue".to_string(),
         }
     }
 }

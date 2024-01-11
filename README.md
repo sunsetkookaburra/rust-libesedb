@@ -27,6 +27,13 @@ fn main() {
 
 A `tests/CacheStorage.edb` can be obtained from from `AppData\Local\Packages\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\AppData\CacheStorage`
 
+## Future Changes
+
+* `v0.3.0`
+    * Remove `close()` methods in favour of `drop!()`
+    * Lazy-load `Value`s (store some sort of record reference, similar to current LongValue and MultiValue internally)
+    * `Value`s come in either `FlatValue`, `LongValue`, `MultiValue` variants, with a defined `ValueType`
+
 ## License and Acknowledgement
 
 This project is made available under the [LGPL-3.0-or-later](./COPYING.LESSER).

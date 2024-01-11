@@ -51,7 +51,12 @@ impl EseDb {
         let filename = CString::new(&*filename.as_ref().to_string_lossy())?;
         let mut ptr = null_mut();
         ese_result!(libesedb_file_initialize, &mut ptr)?;
-        if let Err(e) = ese_result!(libesedb_file_open, ptr, filename.as_ptr(), LIBESEDB_OPEN_READ) {
+        if let Err(e) = ese_result!(
+            libesedb_file_open,
+            ptr,
+            filename.as_ptr(),
+            LIBESEDB_OPEN_READ
+        ) {
             unsafe {
                 libesedb_file_free(&mut ptr, null_mut());
             }
