@@ -92,6 +92,32 @@ fn main() {
                         }
                     }
                     c.file(ent.path());
+                } else if name == "libesedb_multi_value.c" {
+                    println!("cargo:warning=Patching libesedb_multi_value.c binary type guard");
+                    let mut multi_value = File::create(out_dir.join(ent.path())).unwrap();
+                    let lines = BufReader::new(File::open(ent.path()).unwrap()).lines();
+                    let mut replacement_section = false;
+                    for line in lines {
+                        let line = line.unwrap();
+                        if replacement_section {
+                            if line.contains("if( ( column_type != LIBESEDB_COLUMN_TYPE_TEXT )") {
+                                writeln!(multi_value, "if( ( column_type != LIBESEDB_COLUMN_TYPE_BINARY_DATA )").unwrap();
+                            } else if line.contains("&& ( column_type != LIBESEDB_COLUMN_TYPE_LARGE_TEXT ) )") {
+                                writeln!(multi_value, "&& ( column_type != LIBESEDB_COLUMN_TYPE_LARGE_BINARY_DATA ) )").unwrap();
+                            } else {
+                                if line.starts_with('}') {
+                                    replacement_section = false;
+                                }
+                                writeln!(multi_value, "{line}").unwrap();
+                            }
+                        } else {
+                            writeln!(multi_value, "{line}").unwrap();
+                            if line.starts_with("int libesedb_multi_value_get_value_binary_data(") {
+                                replacement_section = true;
+                            }
+                        }
+                    }
+                    c.file(ent.path());
                 } else if parent_name.starts_with("lib") {
                     c.file(ent.path());
                 }
