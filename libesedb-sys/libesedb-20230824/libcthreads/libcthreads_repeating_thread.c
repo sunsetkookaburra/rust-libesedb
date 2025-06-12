@@ -26,8 +26,8 @@
 #include <errno.h>
 
 #if defined( _MSC_VER ) && defined( WINAPI ) && ( WINVER >= 0x0602 )
-#include <Processthreadsapi.h>
-#include <Synchapi.h>
+#include <processthreadsapi.h>
+#include <synchapi.h>
 #endif
 
 #if defined( HAVE_PTHREAD_H ) && !defined( WINAPI )

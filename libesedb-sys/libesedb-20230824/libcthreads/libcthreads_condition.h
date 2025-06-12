@@ -26,7 +26,7 @@
 #include <types.h>
 
 #if defined( _MSC_VER ) && defined( WINAPI ) && ( WINVER >= 0x0602 )
-#include <Synchapi.h>
+#include <synchapi.h>
 #endif
 
 #if defined( HAVE_PTHREAD_H ) && !defined( WINAPI )

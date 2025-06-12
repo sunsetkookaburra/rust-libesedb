@@ -26,7 +26,7 @@
 #include <types.h>
 
 #if defined( _MSC_VER ) && defined( WINAPI ) && ( WINVER >= 0x0602 )
-#include <Threadpoolapiset.h>
+#include <threadpoolapiset.h>
 #endif
 
 #include "libcthreads_extern.h"
