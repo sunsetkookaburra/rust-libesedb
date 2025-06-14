@@ -25,7 +25,7 @@ use std::ptr::null_mut;
 use crate::error::ese_result;
 use crate::{LongValue, MultiValue};
 // use crate::iter::{LoadEntry, IterEntries};
-use crate::value::Value;
+use crate::Value;
 
 /// Instance of a ESE database record in a currently open [`crate::Table`].
 pub struct Record<'a> {

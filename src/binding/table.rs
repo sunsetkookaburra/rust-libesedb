@@ -22,10 +22,10 @@ use std::io;
 use std::marker::PhantomData;
 use std::ptr::null_mut;
 
-use crate::column::Column;
+use crate::Column;
 use crate::error::ese_result;
 // use crate::iter::{IterEntries, LoadEntry};
-use crate::record::Record;
+use crate::Record;
 
 /// Instance of a ESE database table in a currently open [`crate::EseDb`].
 pub struct Table<'a> {

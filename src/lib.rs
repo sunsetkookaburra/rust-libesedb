@@ -42,19 +42,14 @@
 //!
 //! The core functionality that this library binds to is the hard work of [`Joachim Metz (~joachimmetz)`](https://github.com/joachimmetz).
 
-mod column;
-mod db;
-mod error;
-mod long_value;
-mod multi_value;
-mod record;
-mod table;
-mod value;
+mod binding;
 
-pub use column::*;
-pub use db::*;
-pub use long_value::*;
-pub use multi_value::*;
-pub use record::*;
-pub use table::*;
-pub use value::*;
+pub(crate) use binding::error;
+
+pub use binding::column::*;
+pub use binding::db::*;
+pub use binding::long_value::*;
+pub use binding::multi_value::*;
+pub use binding::record::*;
+pub use binding::table::*;
+pub use binding::value::*;
