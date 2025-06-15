@@ -18,18 +18,38 @@
  */
 
 use cc::Build;
+use patch_apply::{apply, Patch};
 use std::env;
-use std::fs::{copy, create_dir_all, File};
-use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
-use std::process::Command;
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 const VERSION: &str = "20230824";
 
+fn apply_changes<P: AsRef<Path>, S: AsRef<str>>(root: P, patch_text: S) -> io::Result<()> {
+    let root = root.as_ref();
+    match Patch::from_multiple(patch_text.as_ref()) {
+        Ok(patches) => {
+            for patch in patches {
+                let old_file_path = root.join(&*patch.old.path);
+                let old_file_text = fs::read_to_string(&old_file_path)?;
+                fs::remove_file(&old_file_path)?;
+                let new_file_path = root.join(&*patch.new.path);
+                let new_file_text = apply(old_file_text, patch);
+                fs::write(&new_file_path, new_file_text)?;
+            }
+            Ok(())
+        },
+        Err(err) => {
+            Err(io::Error::other(format!("{err}")))
+        },
+    }
+}
+
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-env-changed=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES");
+    println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-env-changed=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES");
 
     // docs.rs will attempt to compile, to allow for build scripts that generate
     //   bindings on the fly.
@@ -37,7 +57,7 @@ fn main() {
     //   vendored C source for docs.rs
     if env::var("DOCS_RS").is_ok() {
         println!(
-            "cargo:warning=docs.rs build, skipping C source build because of manual bindings."
+            "cargo::warning=docs.rs build, skipping C source build because of manual bindings."
         );
         return;
     }
@@ -54,74 +74,52 @@ fn main() {
     //   * Compile with `cc` crate
     let mut c = Build::new();
 
-    // Copy source to OUT_DIR, so we can make changes without affecting the
-    //   bundled source tree (allow for reproducibility).
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let src_dir = out_dir.join(format!("libesedb-{VERSION}"));
+    println!("cargo::warning=Using OUT_DIR: {out_dir:?}");
 
+    // Copy source to OUT_DIR, so we can make changes without affecting the
+    //   local cache of the bundled source tree (reproducibility).
     for ent in WalkDir::new(format!("libesedb-{VERSION}")) {
         let ent = ent.unwrap();
         if ent.file_type().is_dir() {
-            // println!("{:?}", out_dir.join(ent.path()));
-            create_dir_all(out_dir.join(ent.path())).unwrap();
+            fs::create_dir_all(out_dir.join(ent.path())).unwrap();
         } else if ent.file_type().is_file() {
-            copy(ent.path(), out_dir.join(ent.path())).unwrap();
-            let name = ent.file_name().to_str().unwrap();
-            if name.ends_with(".c") {
-                let parent_name = ent
-                    .path()
-                    .parent()
-                    .unwrap()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap();
-                if name == "libesedb_page_tree.c" {
-                    let max_leaf_pages = env::var("LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES")
-                        .unwrap_or(String::from("32 * 1024"));
-                    println!("cargo:warning=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES set to ({max_leaf_pages})");
-                    let mut page_tree = File::create(out_dir.join(ent.path())).unwrap();
-                    for line in BufReader::new(File::open(ent.path()).unwrap()).lines() {
-                        let line = line.unwrap();
-                        writeln!(page_tree, "{line}").unwrap();
-                        if line.starts_with("#include \"esedb_page_values.h\"") {
-                            writeln!(page_tree).unwrap();
-                            writeln!(page_tree, "#undef LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES")
-                                .unwrap();
-                            writeln!(page_tree, "#define LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES   ({max_leaf_pages})").unwrap();
-                        }
-                    }
-                    c.file(ent.path());
-                } else if name == "libesedb_multi_value.c" {
-                    println!("cargo:warning=Patching libesedb_multi_value.c binary type guard");
-                    let mut multi_value = File::create(out_dir.join(ent.path())).unwrap();
-                    let lines = BufReader::new(File::open(ent.path()).unwrap()).lines();
-                    let mut replacement_section = false;
-                    for line in lines {
-                        let line = line.unwrap();
-                        if replacement_section {
-                            if line.contains("if( ( column_type != LIBESEDB_COLUMN_TYPE_TEXT )") {
-                                writeln!(multi_value, "if( ( column_type != LIBESEDB_COLUMN_TYPE_BINARY_DATA )").unwrap();
-                            } else if line.contains("&& ( column_type != LIBESEDB_COLUMN_TYPE_LARGE_TEXT ) )") {
-                                writeln!(multi_value, "&& ( column_type != LIBESEDB_COLUMN_TYPE_LARGE_BINARY_DATA ) )").unwrap();
-                            } else {
-                                if line.starts_with('}') {
-                                    replacement_section = false;
-                                }
-                                writeln!(multi_value, "{line}").unwrap();
-                            }
-                        } else {
-                            writeln!(multi_value, "{line}").unwrap();
-                            if line.starts_with("int libesedb_multi_value_get_value_binary_data(") {
-                                replacement_section = true;
-                            }
-                        }
-                    }
-                    c.file(ent.path());
-                } else if parent_name.starts_with("lib") {
-                    c.file(ent.path());
-                }
-            }
+            fs::copy(ent.path(), out_dir.join(ent.path())).unwrap();
+        }
+    }
+
+    let src_dir = out_dir.join(format!("libesedb-{VERSION}"));
+
+    // Apply our downstream patches.
+    for ent in WalkDir::new("patches") {
+        let ent = ent.unwrap();
+        if !ent.file_type().is_file() { continue; }
+        let name = ent.file_name().to_str().unwrap();
+        if !name.ends_with(".patch") { continue; }
+
+        println!("cargo::warning=Applying {:?}", ent.path());
+        let patch_file_text = fs::read_to_string(ent.path()).unwrap();
+        apply_changes(&src_dir, patch_file_text).unwrap();
+    }
+
+    let max_leaf_pages = env::var("LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES")
+        .unwrap_or(String::from("(INT_MAX - 1)"));
+    println!("cargo::warning=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES set to `{max_leaf_pages}`");
+    c.define("BUILD_RS_LIBESEDB_LEAF_PAGES", &*max_leaf_pages);
+
+    // Add all *relevant* source .c files (lib*/*.c),
+    // basically to exclude esedbtools, tests and Python bindings.
+    for ent in WalkDir::new(&src_dir) {
+        let ent = ent.unwrap();
+        if !ent.file_type().is_file() { continue; }
+        let name = ent.file_name().to_str().unwrap();
+        if !name.ends_with(".c") { continue; }
+
+        let parent_name = ent.path().parent()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str()).unwrap();
+        if parent_name.starts_with("lib") {
+            c.file(ent.path());
         }
     }
 
@@ -147,7 +145,8 @@ fn main() {
     c.include(src_dir.join("libmapidb"));
     c.include(src_dir.join("libuna"));
 
-    if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" {
+    if cfg!(windows) {
+        println!("cargo::warning=Applying Windows config...");
         c.define("HAVE_LOCAL_LIBBFIO", "1");
         c.define("HAVE_LOCAL_LIBCDATA", "1");
         c.define("HAVE_LOCAL_LIBCERROR", "1");
@@ -166,23 +165,35 @@ fn main() {
         c.define("HAVE_LOCAL_LIBFWNT", "1");
         c.define("HAVE_LOCAL_LIBMAPIDB", "1");
         c.define("HAVE_LOCAL_LIBUNA", "1");
-    } else if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "unix" {
+    } else if cfg!(unix) {
+        println!("cargo::warning=Applying Unix config...");
         c.define("HAVE_CONFIG_H", None);
         c.define("LOCALEDIR", "\"/usr/share/locale\"");
+        apply_changes(&src_dir, "\
+            --- common/config.h\n\
+            +++ common/config.h\n\
+            @@ -29,1 +29,1 @@\n\
+            -#define HAVE_CYGWIN_FS_H 1\n\
+            +#undef HAVE_CYGWIN_FS_H\n\
+        ").unwrap();
 
-        Command::new("chmod")
-            .arg("+x")
-            .arg(src_dir.join("configure"))
-            .status()
-            .unwrap();
-        // Run configure on Unices (they have shell)
-        Command::new(src_dir.join("configure"))
-            .current_dir(src_dir)
-            .env("CC", c.get_compiler().cc_env())
-            .env("CFLAGS", c.get_compiler().cflags_env())
-            .status()
-            .unwrap();
+        if cfg!(target_os = "macos") {
+            println!("cargo::warning=Applying additional MacOS config...");
+            apply_changes(&src_dir, "\
+                --- common/config.h\n\
+                +++ common/config.h\n\
+                @@ -227,1 +227,1 @@\n\
+                -#define HAVE_LIBINTL_H 1\n\
+                +#undef HAVE_LIBINTL_H\n\
+                @@ -347,1 +347,1 @@\n\
+                -#define HAVE_POSIX_FADVISE 1\n\
+                +#undef HAVE_POSIX_FADVISE\n\
+            ").unwrap();
+        }
+
+        eprintln!("{}", fs::read_to_string(src_dir.join("common/config.h")).unwrap());
     }
 
+    println!("cargo::warning=Compiling (CC)...");
     c.compile("esedb");
 }

@@ -1,0 +1,5 @@
+--- libesedb/libesedb_definitions.h
++++ libesedb/libesedb_definitions.h
+@@ -253,1 +253,1 @@
+-#define LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES				16 * 1024
++#define LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES				BUILD_RS_LIBESEDB_LEAF_PAGES
