@@ -1,6 +1,6 @@
 [package]
 name = "libesedb"
-version = "0.2.5"
+version = "0.2.6"
 license = "LGPL-3.0-or-later"
 description = "A safe Rust API for libesedb"
 documentation = "https://docs.rs/libesedb"
@@ -11,5 +11,5 @@ categories = ["database"]
 edition = "2021"
 
 [dependencies]
-libesedb-sys = { path = "libesedb-sys", version = "0.2.0" }
+libesedb-sys = { path = "libesedb-sys", version = "0.2.1" }
 time = { version = "0.3.20", features = ["formatting", "macros"] }
