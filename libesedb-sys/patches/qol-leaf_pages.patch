@@ -1,0 +1,7 @@
+--- libesedb/libesedb_page_tree.c
++++ libesedb/libesedb_page_tree.c
+@@ -1727,2 +1727,2 @@
+-				 "%s: invalid number of leaf pages value exceeds maximum.",
+-				 function );
++				 "%s: invalid number of leaf pages value %d exceeds maximum %d.",
++				 function, number_of_leaf_pages, LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES );
