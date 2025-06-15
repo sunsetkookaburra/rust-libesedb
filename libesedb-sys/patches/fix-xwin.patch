@@ -1,0 +1,57 @@
+--- libcthreads/libcthreads_condition.c
++++ libcthreads/libcthreads_condition.c
+@@ -29,1 +29,1 @@
+-#include <Synchapi.h>
++#include <synchapi.h>
+
+--- libcthreads/libcthreads_condition.h
++++ libcthreads/libcthreads_condition.h
+@@ -29,1 +29,1 @@
+-#include <Synchapi.h>
++#include <synchapi.h>
+
+--- libcthreads/libcthreads_mutex.c
++++ libcthreads/libcthreads_mutex.c
+@@ -29,1 +29,1 @@
+-#include <Synchapi.h>
++#include <synchapi.h>
+
+--- libcthreads/libcthreads_read_write_lock.c
++++ libcthreads/libcthreads_read_write_lock.c
+@@ -29,1 +29,1 @@
+-#include <Synchapi.h>
++#include <synchapi.h>
+
+--- libcthreads/libcthreads_read_write_lock.h
++++ libcthreads/libcthreads_read_write_lock.h
+@@ -29,1 +29,1 @@
+-#include <Synchapi.h>
++#include <synchapi.h>
+
+--- libcthreads/libcthreads_repeating_thread.c
++++ libcthreads/libcthreads_repeating_thread.c
+@@ -29,2 +29,2 @@
+-#include <Processthreadsapi.h>
+-#include <Synchapi.h>
++#include <processthreadsapi.h>
++#include <synchapi.h>
+
+--- libcthreads/libcthreads_thread.c
++++ libcthreads/libcthreads_thread.c
+@@ -29,2 +29,2 @@
+-#include <Processthreadsapi.h>
+-#include <Synchapi.h>
++#include <processthreadsapi.h>
++#include <synchapi.h>
+
+--- libcthreads/libcthreads_thread_pool.c
++++ libcthreads/libcthreads_thread_pool.c
+@@ -29,1 +29,1 @@
+-#include <Threadpoolapiset.h>
++#include <threadpoolapiset.h>
+
+--- libcthreads/libcthreads_thread_pool.h
++++ libcthreads/libcthreads_thread_pool.h
+@@ -29,1 +29,1 @@
+-#include <Threadpoolapiset.h>
++#include <threadpoolapiset.h>
