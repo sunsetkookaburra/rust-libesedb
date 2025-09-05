@@ -163,7 +163,7 @@ impl MultiValue<'_> {
                     entry,
                     &mut size
                 )?;
-                let mut buf = Vec::with_capacity(size);
+                let mut buf = vec![0; size as _];
                 ese_result!(
                     libesedb_multi_value_get_value_binary_data,
                     self.ptr,
@@ -181,7 +181,7 @@ impl MultiValue<'_> {
                     entry,
                     &mut size
                 )?;
-                let mut buf = Vec::with_capacity(size);
+                let mut buf = vec![0; size as _];
                 ese_result!(
                     libesedb_multi_value_get_value_utf8_string,
                     self.ptr,
@@ -202,7 +202,7 @@ impl MultiValue<'_> {
                     entry,
                     &mut size
                 )?;
-                let mut buf = Vec::with_capacity(size);
+                let mut buf = vec![0; size as _];
                 ese_result!(
                     libesedb_multi_value_get_value_binary_data,
                     self.ptr,
@@ -220,7 +220,7 @@ impl MultiValue<'_> {
                     entry,
                     &mut size
                 )?;
-                let mut buf = Vec::with_capacity(size);
+                let mut buf = vec![0; size as _];
                 ese_result!(
                     libesedb_multi_value_get_value_utf8_string,
                     self.ptr,
@@ -241,7 +241,7 @@ impl MultiValue<'_> {
                     entry,
                     &mut size
                 )?;
-                let mut buf = Vec::with_capacity(size);
+                let mut buf = vec![0; size as _];
                 ese_result!(
                     libesedb_multi_value_get_value_data,
                     self.ptr,
@@ -279,7 +279,7 @@ impl MultiValue<'_> {
                     entry,
                     &mut size
                 )?;
-                let mut buf = Vec::with_capacity(size);
+                let mut buf = vec![0; size as _];
                 ese_result!(
                     libesedb_multi_value_get_value_data,
                     self.ptr,
