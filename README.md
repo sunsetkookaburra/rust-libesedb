@@ -36,6 +36,20 @@ fn main() {
     * Lazy-load `Value`s (store some sort of record reference, similar to current LongValue and MultiValue internally)
     * `Value`s come in either `FlatValue`, `LongValue`, `MultiValue` variants, with a defined `ValueType`
 
+## Publishing Process
+
+1. `git pull` any changes from `main`
+2. Update `version` in Cargo.toml
+    * Any changes to libesedb-sys will require updating the dependency version and a bump in the main crate version too
+3. `git add` / `git commit` the version change (and push); e.g. `release: libesedb-v0.2.7`
+4. Create a git tag / GitHub release
+    * e.g. `libesedb-v0.2.7`
+5. Packaging dry-run
+    * `cargo publish --dry-run`
+    * `cargo package --list`
+6. Publish
+    * `cargo publish`
+
 ## License and Acknowledgement
 
 This project is made available under the [LGPL-3.0-or-later](./COPYING.LESSER).
