@@ -90,8 +90,9 @@ fn main() {
 
     let src_dir = out_dir.join(format!("libesedb-{VERSION}"));
 
-    // Apply our downstream patches.
-    for ent in WalkDir::new("patches") {
+    // Apply our downstream patches in filename order (numeric prefixes
+    // 001-, 002-, ... determine the insertion order).
+    for ent in WalkDir::new("patches").sort_by_file_name() {
         let ent = ent.unwrap();
         if !ent.file_type().is_file() { continue; }
         let name = ent.file_name().to_str().unwrap();
