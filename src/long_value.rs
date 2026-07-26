@@ -93,7 +93,7 @@ impl LongValue<'_> {
         )?;
         unsafe { text.set_len(size as _) };
         text.pop(); // remove nul byte
-        String::from_utf8(text).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        String::from_utf8(text).map_err(io::Error::other)
     }
 
     pub fn count_segments(&self) -> io::Result<i32> {

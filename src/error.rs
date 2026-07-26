@@ -42,9 +42,7 @@ fn error_backtrace_string(error: *mut libesedb_error_t) -> String {
 }
 
 pub(crate) fn ese_error(error: *mut *mut libesedb_error_t) -> io::Error {
-    let err = io::Error::new(
-        io::ErrorKind::Other,
-        // error_string(unsafe { *error })
+    let err = io::Error::other(
         format!(
             "c-libesedb: {}\n{}",
             error_string(unsafe { *error }),
@@ -58,7 +56,7 @@ pub(crate) fn ese_error(error: *mut *mut libesedb_error_t) -> io::Error {
 }
 
 macro_rules! ese_result {
-    ($fn_name:ident, $($args:expr),*) => ({
+    ($fn_name:ident, $($args:expr_2021),*) => ({
         let mut error: *mut libesedb_error_t = ::std::ptr::null_mut();
         let result = unsafe { $fn_name($($args),*, &mut error) };
         if -1 == result {

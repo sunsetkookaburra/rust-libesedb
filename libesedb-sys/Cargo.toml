@@ -8,7 +8,7 @@ repository = "https://github.com/sunsetkookaburra/rust-libesedb"
 readme = "README.md"
 keywords = ["libesedb", "esent", "edb", "jet-blue", "ese"]
 categories = ["external-ffi-bindings", "database"]
-edition = "2021"
+edition = "2024"
 links = "esedb"
 
 [build-dependencies]

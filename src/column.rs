@@ -45,7 +45,7 @@ impl Column<'_> {
         )?;
         unsafe { name.set_len(size as _) }
         name.pop();
-        String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        String::from_utf8(name).map_err(io::Error::other)
     }
 
     /// Gets the entry id of the column.
