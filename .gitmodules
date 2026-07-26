@@ -1,0 +1,57 @@
+[submodule "libesedb-sys/libesedb"]
+	path = libesedb-sys/libesedb
+	url = https://github.com/libyal/libesedb.git
+[submodule "libesedb-sys/libcthreads"]
+	path = libesedb-sys/libcthreads
+	url = https://github.com/libyal/libcthreads.git
+[submodule "libesedb-sys/libbfio"]
+	path = libesedb-sys/libbfio
+	url = https://github.com/libyal/libbfio
+[submodule "libesedb-sys/libcdata"]
+	path = libesedb-sys/libcdata
+	url = https://github.com/libyal/libcdata
+[submodule "libesedb-sys/libcerror"]
+	path = libesedb-sys/libcerror
+	url = https://github.com/libyal/libcerror
+[submodule "libesedb-sys/libcfile"]
+	path = libesedb-sys/libcfile
+	url = https://github.com/libyal/libcfile
+[submodule "libesedb-sys/libclocale"]
+	path = libesedb-sys/libclocale
+	url = https://github.com/libyal/libclocale
+[submodule "libesedb-sys/libcnotify"]
+	path = libesedb-sys/libcnotify
+	url = https://github.com/libyal/libcnotify
+[submodule "libesedb-sys/libcpath"]
+	path = libesedb-sys/libcpath
+	url = https://github.com/libyal/libcpath
+[submodule "libesedb-sys/libcsplit"]
+	path = libesedb-sys/libcsplit
+	url = https://github.com/libyal/libcsplit
+[submodule "libesedb-sys/libfcache"]
+	path = libesedb-sys/libfcache
+	url = https://github.com/libyal/libfcache
+[submodule "libesedb-sys/libfdata"]
+	path = libesedb-sys/libfdata
+	url = https://github.com/libyal/libfdata
+[submodule "libesedb-sys/libfdatetime"]
+	path = libesedb-sys/libfdatetime
+	url = https://github.com/libyal/libfdatetime
+[submodule "libesedb-sys/libfguid"]
+	path = libesedb-sys/libfguid
+	url = https://github.com/libyal/libfguid
+[submodule "libesedb-sys/libfmapi"]
+	path = libesedb-sys/libfmapi
+	url = https://github.com/libyal/libfmapi
+[submodule "libesedb-sys/libfvalue"]
+	path = libesedb-sys/libfvalue
+	url = https://github.com/libyal/libfvalue
+[submodule "libesedb-sys/libfwnt"]
+	path = libesedb-sys/libfwnt
+	url = https://github.com/libyal/libfwnt
+[submodule "libesedb-sys/libmapidb"]
+	path = libesedb-sys/libmapidb
+	url = https://github.com/libyal/libmapidb
+[submodule "libesedb-sys/libuna"]
+	path = libesedb-sys/libuna
+	url = https://github.com/libyal/libuna
