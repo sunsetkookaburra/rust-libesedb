@@ -47,8 +47,7 @@ impl Table<'_> {
                 ptr,
                 _marker: PhantomData,
             }),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 format!("Can't find table '{name}'"),
             )),
         }
@@ -67,7 +66,7 @@ impl Table<'_> {
         )?;
         unsafe { name.set_len(size as _) }
         name.pop();
-        String::from_utf8(name).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        String::from_utf8(name).map_err(io::Error::other)
     }
 
     /// Total number of columns in table.
@@ -86,13 +85,13 @@ impl Table<'_> {
 
     /// Load a specific column by entry number.
     /// Returned [`Column`] is bound to the lifetime of the database table.
-    pub fn column(&self, entry: i32) -> io::Result<Column> {
+    pub fn column(&self, entry: i32) -> io::Result<Column<'_>> {
         Column::load(self.ptr, entry)
     }
 
     /// Load a specific record (row) by entry number.
     /// Returned [`Record`] is bound to the lifetime of the database table.
-    pub fn record(&self, entry: i32) -> io::Result<Record> {
+    pub fn record(&self, entry: i32) -> io::Result<Record<'_>> {
         Record::load(self.ptr, entry)
     }
 
@@ -114,7 +113,7 @@ impl Table<'_> {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_columns(&self) -> io::Result<impl Iterator<Item = io::Result<Column>>> {
+    pub fn iter_columns(&self) -> io::Result<impl Iterator<Item = io::Result<Column<'_>>>> {
         Ok((0..self.count_columns()?).map(|i| Column::load(self.ptr, i)))
     }
 
@@ -139,7 +138,7 @@ impl Table<'_> {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_records(&self) -> io::Result<impl Iterator<Item = io::Result<Record>>> {
+    pub fn iter_records(&self) -> io::Result<impl Iterator<Item = io::Result<Record<'_>>>> {
         Ok((0..self.count_records()?).map(|i| Record::load(self.ptr, i)))
     }
 

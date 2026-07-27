@@ -17,183 +17,207 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use cc::Build;
-use patch_apply::{apply, Patch};
 use std::env;
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
-const VERSION: &str = "20230824";
+use cc::Build;
 
-fn apply_changes<P: AsRef<Path>, S: AsRef<str>>(root: P, patch_text: S) -> io::Result<()> {
-    let root = root.as_ref();
-    match Patch::from_multiple(patch_text.as_ref()) {
-        Ok(patches) => {
-            for patch in patches {
-                let old_file_path = root.join(&*patch.old.path);
-                let old_file_text = fs::read_to_string(&old_file_path)?;
-                fs::remove_file(&old_file_path)?;
-                let new_file_path = root.join(&*patch.new.path);
-                let new_file_text = apply(old_file_text, patch);
-                fs::write(&new_file_path, new_file_text)?;
-            }
-            Ok(())
-        },
-        Err(err) => {
-            Err(io::Error::other(format!("{err}")))
-        },
+const VERSION: &str = "20260704";
+
+const LIBYALS: [&str; 18] = [
+    "libbfio",
+    "libcdata",
+    "libcerror",
+    "libcfile",
+    "libclocale",
+    "libcnotify",
+    "libcpath",
+    "libcsplit",
+    "libcthreads",
+    "libfcache",
+    "libfdata",
+    "libfdatetime",
+    "libfguid",
+    "libfmapi",
+    "libfvalue",
+    "libfwnt",
+    "libmapidb",
+    "libuna",
+];
+
+fn main() {
+    println!("cargo::rerun-if-changed=libesedb/common");
+    println!("cargo::rerun-if-changed=libesedb/include");
+    println!("cargo::rerun-if-changed=libesedb/libesedb");
+
+    let target = env::var("TARGET").unwrap();
+
+    let mut cfg = Build::new();
+    let dst = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let common = dst.join("common");
+    fs::create_dir_all(&common).unwrap();
+    let include = dst.join("include");
+    fs::create_dir_all(&include).unwrap();
+    let libesedb = dst.join("libesedb");
+    fs::create_dir_all(&libesedb).unwrap();
+
+    cp_r("libesedb/common", &common);
+    cfg.include(&common);
+    cp_r("libesedb/include", &include);
+    cfg.include(&include);
+    cp_r("libesedb/libesedb", &libesedb);
+
+    for libyal in &LIBYALS {
+        let lib = libesedb.join(libyal);
+        fs::create_dir_all(&lib).unwrap();
+        cp_r(format!("{}/{}", libyal, libyal), &lib);
+        cfg.include(&lib);
+        cfg.define(&format!("HAVE_LOCAL_{}", libyal.to_uppercase()), "1");
+        println!("cargo::rerun-if-changed={}/{}", libyal, libyal);
+    }
+
+    // Set all the autoconf string substitutions.
+    let package = format!("libesedb {}", VERSION);
+    let ac_config = vec![
+        ["HAVE_INTTYPES_H", "0"],
+        ["HAVE_LIBBFIO", "0"],
+        ["HAVE_MULTI_THREAD_SUPPORT", "0"],
+        ["HAVE_OFF64_T", "0"],
+        ["HAVE_SIZE32_T", "0"],
+        ["HAVE_SIZE64_T", "0"],
+        ["HAVE_SSIZE32_T", "0"],
+        ["HAVE_SSIZE64_T", "0"],
+        ["HAVE_STDINT_H", "0"],
+        ["HAVE_SYS_TYPES_H", "0"],
+        ["HAVE_WCHAR_H", "0"],
+        ["HAVE_WIDE_CHARACTER_TYPE", "0"],
+        ["PACKAGE", "libesedb"],
+        ["PACKAGE_BUGREPORT", "joachim.metz@gmail.com"],
+        ["PACKAGE_NAME", "libesedb"],
+        ["PACKAGE_STRING", &package],
+        ["PACKAGE_TARNAME", "libesedb"],
+        ["PACKAGE_URL", ""],
+        ["PACKAGE_VERSION", VERSION],
+    ];
+
+    // Add all the `c` files while also converting `in` files.
+    configure_files(&mut cfg, &dst, &ac_config);
+
+    eprintln!("{}", target);
+    if target.contains("windows") {
+        cfg.define("WINAPI", "1");
+    } else {
+        cfg.define("HAVE_CHDIR", "1");
+        cfg.define("HAVE_CLOSE", "1");
+        cfg.define("HAVE_ERRNO_H", "1");
+        cfg.define("HAVE_FCLOSE", "1");
+        cfg.define("HAVE_FCNTL_H", "1");
+        cfg.define("HAVE_FOPEN", "1");
+        cfg.define("HAVE_FREAD", "1");
+        cfg.define("HAVE_FREE", "1");
+        cfg.define("HAVE_FSTAT", "1");
+        cfg.define("HAVE_FTRUNCATE", "1");
+        cfg.define("HAVE_FWRITE", "1");
+        cfg.define("HAVE_GETCWD", "1");
+        cfg.define("HAVE_INTTYPES_H", "1");
+        cfg.define("HAVE_LIMITS_H", "1");
+        cfg.define("HAVE_LOCALE_H", "1");
+        cfg.define("HAVE_LSEEK", "1");
+        cfg.define("HAVE_MALLOC", "1");
+        cfg.define("HAVE_MEMCHR", "1");
+        cfg.define("HAVE_MEMCMP", "1");
+        cfg.define("HAVE_MEMCPY", "1");
+        cfg.define("HAVE_MEMSET", "1");
+        cfg.define("HAVE_MKDIR", "1");
+        cfg.define("HAVE_MULTI_THREAD_SUPPORT", "1");
+        cfg.define("HAVE_OPEN", "1");
+        cfg.define("HAVE_PTHREAD_H", "1");
+        cfg.define("HAVE_READ", "1");
+        cfg.define("HAVE_REALLOC", "1");
+        cfg.define("HAVE_STAT", "1");
+        cfg.define("HAVE_STDARG_H", "1");
+        cfg.define("HAVE_STDINT_H", "1");
+        cfg.define("HAVE_STDLIB_H", "1");
+        cfg.define("HAVE_STRERROR_R", "1");
+        cfg.define("HAVE_STRING_H", "1");
+        cfg.define("HAVE_STRLEN", "1");
+        cfg.define("HAVE_STRNCASECMP", "1");
+        cfg.define("HAVE_SYS_STAT_H", "1");
+        cfg.define("HAVE_SYS_TYPES_H", "1");
+        cfg.define("HAVE_UNISTD_H", "1");
+        cfg.define("HAVE_UNLINK", "1");
+        cfg.define("HAVE_VSNPRINTF", "1");
+        cfg.define("HAVE_WRITE", "1");
+    }
+
+    let mut bind = bindgen::Builder::default()
+        .allowlist_file(".*libesedb.*")
+        // NOTE: Enums are typed in `lib.rs` to handle signed issue!
+        .blocklist_type("LIBESEDB_CODEPAGES")
+        .blocklist_type("LIBESEDB_.*_DOMAINS")
+        .blocklist_type("LIBESEDB_.*_ERROR")
+        .blocklist_type("LIBESEDB_.*_FLAGS")
+        .blocklist_type("LIBESEDB_.*_TYPES")
+        .clang_arg("-DHAVE_STDINT_H")
+        .clang_arg("-DHAVE_SYS_TYPES_H")
+        .clang_arg(&format!("-I{}", include.display()))
+        .header("wrapper.h");
+
+    if target.contains("apple") {
+        bind = bind.clang_arg("-I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include");
+    }
+
+    let bindings = bind.generate().unwrap();
+    bindings.write_to_file(dst.join("bindings.rs")).unwrap();
+
+    cfg.compile("esedb");
+
+    println!("cargo:root={}", dst.display());
+}
+
+fn add_file(cfg: &mut Build, path: &Path) {
+    if let Some(extension) = path.extension() {
+        if extension == "c" {
+            cfg.file(&path);
+        }
     }
 }
 
-fn main() {
-    println!("cargo::rerun-if-changed=build.rs");
-    println!("cargo::rerun-if-env-changed=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES");
-
-    // docs.rs will attempt to compile, to allow for build scripts that generate
-    //   bindings on the fly.
-    // We manually generate bindings, so there is no need to recompile the
-    //   vendored C source for docs.rs
-    if env::var("DOCS_RS").is_ok() {
-        println!(
-            "cargo::warning=docs.rs build, skipping C source build because of manual bindings."
-        );
-        return;
-    }
-
-    // There are a couple different approaches to building '*-sys' crates.
-    // This site provides a great overview and initial starting point:
-    //   https://kornel.ski/rust-sys-crate
-    // The build script here takes a weird combo hybrid approach that
-    //   hopefully works well all-round.
-    // On Windows:
-    //   * Compile with `cc` crate
-    // On Unices:
-    //   * Run configure script
-    //   * Compile with `cc` crate
-    let mut c = Build::new();
-
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    println!("cargo::warning=Using OUT_DIR: {out_dir:?}");
-
-    // Copy source to OUT_DIR, so we can make changes without affecting the
-    //   local cache of the bundled source tree (reproducibility).
-    for ent in WalkDir::new(format!("libesedb-{VERSION}")) {
-        let ent = ent.unwrap();
-        if ent.file_type().is_dir() {
-            fs::create_dir_all(out_dir.join(ent.path())).unwrap();
-        } else if ent.file_type().is_file() {
-            fs::copy(ent.path(), out_dir.join(ent.path())).unwrap();
+fn configure_files(cfg: &mut Build, path: &Path, defaults: &Vec<[&str; 2]>) {
+    for e in path.read_dir().unwrap() {
+        let e = e.unwrap();
+        let path = e.path();
+        if e.file_type().unwrap().is_dir() {
+            configure_files(cfg, &path, &defaults);
+        } else {
+            if let Some(extension) = path.extension() {
+                if extension == "in" {
+                    let mut contents = fs::read_to_string(&path).unwrap();
+                    for [k, v] in defaults {
+                        contents = contents.replace(&format!("@{}@", k), v);
+                    }
+                    let stem = path.file_stem().unwrap();
+                    let out = path.with_file_name(stem);
+                    fs::write(&out, contents).unwrap();
+                    add_file(cfg, &out);
+                }
+                add_file(cfg, &path);
+            }
         }
     }
+}
 
-    let src_dir = out_dir.join(format!("libesedb-{VERSION}"));
-
-    // Apply our downstream patches.
-    for ent in WalkDir::new("patches") {
-        let ent = ent.unwrap();
-        if !ent.file_type().is_file() { continue; }
-        let name = ent.file_name().to_str().unwrap();
-        if !name.ends_with(".patch") { continue; }
-
-        println!("cargo::warning=Applying {:?}", ent.path());
-        let patch_file_text = fs::read_to_string(ent.path()).unwrap();
-        apply_changes(&src_dir, patch_file_text).unwrap();
-    }
-
-    let max_leaf_pages = env::var("LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES")
-        .unwrap_or(String::from("(INT_MAX - 1)"));
-    println!("cargo::warning=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES set to `{max_leaf_pages}`");
-    c.define("BUILD_RS_LIBESEDB_LEAF_PAGES", &*max_leaf_pages);
-
-    // Add all *relevant* source .c files (lib*/*.c),
-    // basically to exclude esedbtools, tests and Python bindings.
-    for ent in WalkDir::new(&src_dir) {
-        let ent = ent.unwrap();
-        if !ent.file_type().is_file() { continue; }
-        let name = ent.file_name().to_str().unwrap();
-        if !name.ends_with(".c") { continue; }
-
-        let parent_name = ent.path().parent()
-            .and_then(|p| p.file_name())
-            .and_then(|n| n.to_str()).unwrap();
-        if parent_name.starts_with("lib") {
-            c.file(ent.path());
+fn cp_r(from: impl AsRef<Path>, to: impl AsRef<Path>) {
+    for e in from.as_ref().read_dir().unwrap() {
+        let e = e.unwrap();
+        let from = e.path();
+        let to = to.as_ref().join(e.file_name());
+        if e.file_type().unwrap().is_dir() {
+            fs::create_dir_all(&to).unwrap();
+            cp_r(&from, &to);
+        } else {
+            fs::copy(&from, &to).unwrap();
         }
     }
-
-    c.include(src_dir.join("include"));
-    c.include(src_dir.join("common"));
-    c.include(src_dir.join("libbfio"));
-    c.include(src_dir.join("libcdata"));
-    c.include(src_dir.join("libcerror"));
-    c.include(src_dir.join("libcfile"));
-    c.include(src_dir.join("libclocale"));
-    c.include(src_dir.join("libcnotify"));
-    c.include(src_dir.join("libcpath"));
-    c.include(src_dir.join("libcsplit"));
-    c.include(src_dir.join("libcthreads"));
-    c.include(src_dir.join("libesedb"));
-    c.include(src_dir.join("libfcache"));
-    c.include(src_dir.join("libfdata"));
-    c.include(src_dir.join("libfdatetime"));
-    c.include(src_dir.join("libfguid"));
-    c.include(src_dir.join("libfmapi"));
-    c.include(src_dir.join("libfvalue"));
-    c.include(src_dir.join("libfwnt"));
-    c.include(src_dir.join("libmapidb"));
-    c.include(src_dir.join("libuna"));
-
-    if cfg!(windows) {
-        println!("cargo::warning=Applying Windows config...");
-        c.define("HAVE_LOCAL_LIBBFIO", "1");
-        c.define("HAVE_LOCAL_LIBCDATA", "1");
-        c.define("HAVE_LOCAL_LIBCERROR", "1");
-        c.define("HAVE_LOCAL_LIBCFILE", "1");
-        c.define("HAVE_LOCAL_LIBCLOCALE", "1");
-        c.define("HAVE_LOCAL_LIBCNOTIFY", "1");
-        c.define("HAVE_LOCAL_LIBCPATH", "1");
-        c.define("HAVE_LOCAL_LIBCSPLIT", "1");
-        c.define("HAVE_LOCAL_LIBCTHREADS", "1");
-        c.define("HAVE_LOCAL_LIBFCACHE", "1");
-        c.define("HAVE_LOCAL_LIBFDATA", "1");
-        c.define("HAVE_LOCAL_LIBFDATETIME", "1");
-        c.define("HAVE_LOCAL_LIBFGUID", "1");
-        c.define("HAVE_LOCAL_LIBFMAPI", "1");
-        c.define("HAVE_LOCAL_LIBFVALUE", "1");
-        c.define("HAVE_LOCAL_LIBFWNT", "1");
-        c.define("HAVE_LOCAL_LIBMAPIDB", "1");
-        c.define("HAVE_LOCAL_LIBUNA", "1");
-    } else if cfg!(unix) {
-        println!("cargo::warning=Applying Unix config...");
-        c.define("HAVE_CONFIG_H", None);
-        c.define("LOCALEDIR", "\"/usr/share/locale\"");
-        apply_changes(&src_dir, "\
-            --- common/config.h\n\
-            +++ common/config.h\n\
-            @@ -29,1 +29,1 @@\n\
-            -#define HAVE_CYGWIN_FS_H 1\n\
-            +#undef HAVE_CYGWIN_FS_H\n\
-        ").unwrap();
-
-        if cfg!(target_os = "macos") {
-            println!("cargo::warning=Applying additional MacOS config...");
-            apply_changes(&src_dir, "\
-                --- common/config.h\n\
-                +++ common/config.h\n\
-                @@ -227,1 +227,1 @@\n\
-                -#define HAVE_LIBINTL_H 1\n\
-                +#undef HAVE_LIBINTL_H\n\
-                @@ -347,1 +347,1 @@\n\
-                -#define HAVE_POSIX_FADVISE 1\n\
-                +#undef HAVE_POSIX_FADVISE\n\
-            ").unwrap();
-        }
-
-        eprintln!("{}", fs::read_to_string(src_dir.join("common/config.h")).unwrap());
-    }
-
-    println!("cargo::warning=Compiling (CC)...");
-    c.compile("esedb");
 }

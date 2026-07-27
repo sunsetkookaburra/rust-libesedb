@@ -191,7 +191,7 @@ impl MultiValue<'_> {
                 )?;
                 buf.pop(); // remove nul byte
                 Value::Text(
-                    String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+                    String::from_utf8(buf).map_err(io::Error::other)?,
                 )
             }
             Value::LargeBinary(_) => {
@@ -230,7 +230,7 @@ impl MultiValue<'_> {
                 )?;
                 buf.pop(); // remove nul byte
                 Value::LargeText(
-                    String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+                    String::from_utf8(buf).map_err(io::Error::other)?,
                 )
             }
             Value::SuperLarge(_) => {

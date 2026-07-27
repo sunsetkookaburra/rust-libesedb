@@ -8,8 +8,8 @@ repository = "https://github.com/sunsetkookaburra/rust-libesedb"
 readme = "README.md"
 keywords = ["libesedb", "esent", "edb", "jet-blue", "ese"]
 categories = ["database"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-libesedb-sys = { path = "libesedb-sys", version = "0.2.1" }
+libesedb-sys = { path = "libesedb-sys", version = "0.3.0" }
 time = { version = "0.3.20", features = ["formatting", "macros"] }

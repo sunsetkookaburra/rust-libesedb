@@ -421,6 +421,7 @@ impl Default for Value {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for Value {
     fn to_string(&self) -> String {
         match self {

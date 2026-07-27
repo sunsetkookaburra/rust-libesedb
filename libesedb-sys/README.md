@@ -11,61 +11,14 @@ Rust `-sys` bindings to [`libyal/libesedb`](https://github.com/libyal/libesedb).
 
 ## Building
 
-* Have a compiler installed (if you're using Rust, you have one).
-* (Optionally) LLVM for `bindgen` to regenerate the bindings.
-* Should use `cargo build -vv` for very verbose output to verify `cc` compiling.
+Ensure that all git submodules are initialised after which `cargo build` can be used to compile this library.
 
-### Rebuilding Bindings
+### Updating
 
-```
-bindgen libesedb-20230824/include/libesedb.h -o src/bindings.rs -- -Ilibesedb-20230824/include -fparse-all-comments
-```
+Updating submodules can be achieved by executing the following within the desired submodule `git fetch; git checkout $(git tag -l --sort=-taggerdate | tail -1)`.
+Or all submodules can be updated via `./update.sh`.
 
-
-## Downstream Patches
-
-### Bugfix: Multi-Value Binary Data
-
-<https://github.com/libyal/libesedb/pull/69>
-
-### QoL: Maximum Leaf-Pages
-
-Note: the original value of `16 * 1024` has been increased as far as possible to `(INT_MAX - 1)` in order for large databases to load. In my testing the value makes no meaningful difference beyond limiting the sorts/sizes of files you can open.
-
-Via the command-line:
-
-```
-LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES="32 * 1024" cargo build -vv
-```
-
-In your Cargo.toml:
-
-```
-[env]
-LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES = "32 * 1024"
-```
-
-### QoL: Counting Leaf-Pages
-
-If you do set a leaf-page maximum, when it is exceeded the error message actually reports back that limit so anyone downstream can provide useful debugging information.
-
-
-## Updating Bundled libesedb
-
-* Download/Clone head of the `main` branch
-  * `git clone --branch main --depth 1 https://github.com/libyal/libesedb`
-  * <https://github.com/libyal/libesedb/archive/refs/heads/main.zip>
-* Follow build instructions <https://github.com/libyal/libesedb/wiki/Building>
-  * Run the following
-    * `./synclibs.sh`
-    * `./autogen.sh`
-    * `./configure`
-    * `make dist`
-  * Output should include a `.tar.gz` containing the source distribution version
-  * Note: I used Cygwin on Windows, you will need the packages mentioned here: <https://github.com/libyal/libesedb/wiki/Building#cygwin>
-    * (for reference: `autoconf`, `automake`, `binutils`, `gcc-core`, `gcc-g++`, `gettext-devel`, `libiconv`, `libtool`, `make`, `pkg-config`)
-* Rebuild bindings (see above)
-
+When updating `libesedb` the changes must be reflected in `Cargo.toml`, `build.rs` and `lib.rs`.
 
 ## Authors
 

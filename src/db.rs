@@ -72,13 +72,13 @@ impl EseDb {
 
     /// Load a specific table by entry number.
     /// Returned [`Table`] is bound to the lifetime of the database.
-    pub fn table(&self, entry: i32) -> io::Result<Table> {
+    pub fn table(&self, entry: i32) -> io::Result<Table<'_>> {
         Table::load(self.ptr, entry)
     }
 
     /// Load a specific table by name.
     /// Returned [`Table`] is bound to the lifetime of the database.
-    pub fn table_by_name(&self, name: &str) -> io::Result<Table> {
+    pub fn table_by_name(&self, name: &str) -> io::Result<Table<'_>> {
         Table::from_name(self.ptr, name)
     }
 
@@ -107,7 +107,7 @@ impl EseDb {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn iter_tables(&self) -> io::Result<impl Iterator<Item = io::Result<Table>>> {
+    pub fn iter_tables(&self) -> io::Result<impl Iterator<Item = io::Result<Table<'_>>>> {
         Ok((0..self.count_tables()?).map(|i| Table::load(self.ptr, i)))
     }
 }
