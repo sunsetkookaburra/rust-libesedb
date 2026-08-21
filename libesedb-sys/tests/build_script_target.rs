@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-#[path = "../libesedb-sys/build_config.rs"]
+#[path = "../build_config.rs"]
 mod build_config;
 
 use build_config::TargetConfig;
