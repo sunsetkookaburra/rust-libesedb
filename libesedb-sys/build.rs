@@ -25,6 +25,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+mod build_config;
+
+use build_config::TargetConfig;
+
 const VERSION: &str = "20230824";
 
 fn apply_changes<P: AsRef<Path>, S: AsRef<str>>(root: P, patch_text: S) -> io::Result<()> {
@@ -49,7 +53,11 @@ fn apply_changes<P: AsRef<Path>, S: AsRef<str>>(root: P, patch_text: S) -> io::R
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=build_config.rs");
     println!("cargo::rerun-if-env-changed=LIBESEDB_MAXIMUM_NUMBER_OF_LEAF_PAGES");
+    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");
+    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_FAMILY");
+    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_ENV");
 
     // docs.rs will attempt to compile, to allow for build scripts that generate
     //   bindings on the fly.
@@ -145,53 +153,56 @@ fn main() {
     c.include(src_dir.join("libmapidb"));
     c.include(src_dir.join("libuna"));
 
-    if cfg!(windows) {
-        println!("cargo::warning=Applying Windows config...");
-        c.define("HAVE_LOCAL_LIBBFIO", "1");
-        c.define("HAVE_LOCAL_LIBCDATA", "1");
-        c.define("HAVE_LOCAL_LIBCERROR", "1");
-        c.define("HAVE_LOCAL_LIBCFILE", "1");
-        c.define("HAVE_LOCAL_LIBCLOCALE", "1");
-        c.define("HAVE_LOCAL_LIBCNOTIFY", "1");
-        c.define("HAVE_LOCAL_LIBCPATH", "1");
-        c.define("HAVE_LOCAL_LIBCSPLIT", "1");
-        c.define("HAVE_LOCAL_LIBCTHREADS", "1");
-        c.define("HAVE_LOCAL_LIBFCACHE", "1");
-        c.define("HAVE_LOCAL_LIBFDATA", "1");
-        c.define("HAVE_LOCAL_LIBFDATETIME", "1");
-        c.define("HAVE_LOCAL_LIBFGUID", "1");
-        c.define("HAVE_LOCAL_LIBFMAPI", "1");
-        c.define("HAVE_LOCAL_LIBFVALUE", "1");
-        c.define("HAVE_LOCAL_LIBFWNT", "1");
-        c.define("HAVE_LOCAL_LIBMAPIDB", "1");
-        c.define("HAVE_LOCAL_LIBUNA", "1");
-    } else if cfg!(unix) {
-        println!("cargo::warning=Applying Unix config...");
-        c.define("HAVE_CONFIG_H", None);
-        c.define("LOCALEDIR", "\"/usr/share/locale\"");
-        apply_changes(&src_dir, "\
-            --- common/config.h\n\
-            +++ common/config.h\n\
-            @@ -29,1 +29,1 @@\n\
-            -#define HAVE_CYGWIN_FS_H 1\n\
-            +#undef HAVE_CYGWIN_FS_H\n\
-        ").unwrap();
-
-        if cfg!(target_os = "macos") {
-            println!("cargo::warning=Applying additional MacOS config...");
+    match TargetConfig::from_cargo_env().unwrap_or_else(|error| panic!("{error}")) {
+        TargetConfig::WindowsMsvc => {
+            println!("cargo::warning=Applying Windows MSVC config...");
+            c.define("HAVE_LOCAL_LIBBFIO", "1");
+            c.define("HAVE_LOCAL_LIBCDATA", "1");
+            c.define("HAVE_LOCAL_LIBCERROR", "1");
+            c.define("HAVE_LOCAL_LIBCFILE", "1");
+            c.define("HAVE_LOCAL_LIBCLOCALE", "1");
+            c.define("HAVE_LOCAL_LIBCNOTIFY", "1");
+            c.define("HAVE_LOCAL_LIBCPATH", "1");
+            c.define("HAVE_LOCAL_LIBCSPLIT", "1");
+            c.define("HAVE_LOCAL_LIBCTHREADS", "1");
+            c.define("HAVE_LOCAL_LIBFCACHE", "1");
+            c.define("HAVE_LOCAL_LIBFDATA", "1");
+            c.define("HAVE_LOCAL_LIBFDATETIME", "1");
+            c.define("HAVE_LOCAL_LIBFGUID", "1");
+            c.define("HAVE_LOCAL_LIBFMAPI", "1");
+            c.define("HAVE_LOCAL_LIBFVALUE", "1");
+            c.define("HAVE_LOCAL_LIBFWNT", "1");
+            c.define("HAVE_LOCAL_LIBMAPIDB", "1");
+            c.define("HAVE_LOCAL_LIBUNA", "1");
+        },
+        TargetConfig::Unix { macos } => {
+            println!("cargo::warning=Applying Unix config...");
+            c.define("HAVE_CONFIG_H", None);
+            c.define("LOCALEDIR", "\"/usr/share/locale\"");
             apply_changes(&src_dir, "\
                 --- common/config.h\n\
                 +++ common/config.h\n\
-                @@ -227,1 +227,1 @@\n\
-                -#define HAVE_LIBINTL_H 1\n\
-                +#undef HAVE_LIBINTL_H\n\
-                @@ -347,1 +347,1 @@\n\
-                -#define HAVE_POSIX_FADVISE 1\n\
-                +#undef HAVE_POSIX_FADVISE\n\
+                @@ -29,1 +29,1 @@\n\
+                -#define HAVE_CYGWIN_FS_H 1\n\
+                +#undef HAVE_CYGWIN_FS_H\n\
             ").unwrap();
-        }
 
-        eprintln!("{}", fs::read_to_string(src_dir.join("common/config.h")).unwrap());
+            if macos {
+                println!("cargo::warning=Applying additional MacOS config...");
+                apply_changes(&src_dir, "\
+                    --- common/config.h\n\
+                    +++ common/config.h\n\
+                    @@ -227,1 +227,1 @@\n\
+                    -#define HAVE_LIBINTL_H 1\n\
+                    +#undef HAVE_LIBINTL_H\n\
+                    @@ -347,1 +347,1 @@\n\
+                    -#define HAVE_POSIX_FADVISE 1\n\
+                    +#undef HAVE_POSIX_FADVISE\n\
+                ").unwrap();
+            }
+
+            eprintln!("{}", fs::read_to_string(src_dir.join("common/config.h")).unwrap());
+        },
     }
 
     println!("cargo::warning=Compiling (CC)...");
